@@ -2,13 +2,10 @@
 
 namespace Tests\Unit;
 
-use UkrainianDeclension\Services\AdjectiveDeclensioner;
-use UkrainianDeclension\Services\Declensioner;
 use UkrainianDeclension\Enums\GrammaticalCase;
 use UkrainianDeclension\Enums\Gender;
 use UkrainianDeclension\Enums\Number;
-use UkrainianDeclension\Services\DeclensionGroupIdentifier;
-use UkrainianDeclension\Services\PhraseDeclensioner;
+use UkrainianDeclension\UkrainianDeclension;
 use Tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -17,17 +14,11 @@ class PositionDeclensionTest extends TestCase
     #[DataProvider('positionProvider')]
     public function testPositionDeclension(string $phrase, GrammaticalCase $case, string $expected): void
     {
-        $nounDeclensioner = new Declensioner(new DeclensionGroupIdentifier());
-        $adjectiveDeclensioner = new AdjectiveDeclensioner();
-        $phraseDeclensioner = new PhraseDeclensioner($nounDeclensioner, $adjectiveDeclensioner);
-        $nounDeclensioner->setPhraseDeclensioner($phraseDeclensioner);
-
-        $result = $nounDeclensioner->decline($phrase, $case, Number::SINGULAR, Gender::MASCULINE);
-
+        $result = UkrainianDeclension::decline($phrase, $case, Number::SINGULAR, Gender::MASCULINE);
         $this->assertEquals($expected, $result);
     }
 
-    public static function positionProvider(): array
+    public static function positionProvider(): \Generator
     {
         $cases = [
             'Оперативний черговий групи бойового управління військової частини А0000' => [
@@ -95,14 +86,11 @@ class PositionDeclensionTest extends TestCase
             ],
         ];
 
-        $tests = [];
         foreach ($cases as $word => $declensions) {
+            yield "{$word} (nominative)" => [$word, GrammaticalCase::NOMINATIVE, $word];
             foreach ($declensions as $caseName => $expected) {
-                $case = \UkrainianDeclension\Enums\GrammaticalCase::from($caseName);
-                $tests[sprintf('%s in %s case', $word, $case->value)] = [$word, $case, $expected];
+                yield sprintf('%s in %s case', $word, $caseName) => [$word, GrammaticalCase::from($caseName), $expected];
             }
         }
-
-        return $tests;
     }
 }

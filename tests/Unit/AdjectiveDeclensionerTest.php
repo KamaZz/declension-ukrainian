@@ -28,20 +28,20 @@ class AdjectiveDeclensionerTest extends TestCase
             'оперативний (instrumental, masculine, singular)' => ['оперативний', GrammaticalCase::INSTRUMENTAL, Gender::MASCULINE, Number::SINGULAR, 'оперативним'],
             'оперативний (locative, masculine, singular)' => ['оперативний', GrammaticalCase::LOCATIVE, Gender::MASCULINE, Number::SINGULAR, 'оперативному'],
 
-            // Feminine
+            // Feminine - all these are correct according to Ukrainian grammar
             'оперативна (genitive, feminine, singular)' => ['оперативна', GrammaticalCase::GENITIVE, Gender::FEMININE, Number::SINGULAR, 'оперативної'],
             'оперативна (dative, feminine, singular)' => ['оперативна', GrammaticalCase::DATIVE, Gender::FEMININE, Number::SINGULAR, 'оперативній'],
             'оперативна (accusative, feminine, singular)' => ['оперативна', GrammaticalCase::ACCUSATIVE, Gender::FEMININE, Number::SINGULAR, 'оперативну'],
             'оперативна (instrumental, feminine, singular)' => ['оперативна', GrammaticalCase::INSTRUMENTAL, Gender::FEMININE, Number::SINGULAR, 'оперативною'],
             'оперативна (locative, feminine, singular)' => ['оперативна', GrammaticalCase::LOCATIVE, Gender::FEMININE, Number::SINGULAR, 'оперативній'],
 
-            // Neuter
+            // Neuter - all these are correct according to Ukrainian grammar
             'оперативне (genitive, neuter, singular)' => ['оперативне', GrammaticalCase::GENITIVE, Gender::NEUTER, Number::SINGULAR, 'оперативного'],
             'оперативне (dative, neuter, singular)' => ['оперативне', GrammaticalCase::DATIVE, Gender::NEUTER, Number::SINGULAR, 'оперативному'],
             'оперативне (instrumental, neuter, singular)' => ['оперативне', GrammaticalCase::INSTRUMENTAL, Gender::NEUTER, Number::SINGULAR, 'оперативним'],
             'оперативне (locative, neuter, singular)' => ['оперативне', GrammaticalCase::LOCATIVE, Gender::NEUTER, Number::SINGULAR, 'оперативному'],
 
-            // Plural
+            // Plural - all these are correct according to Ukrainian grammar
             'оперативні (genitive, plural)' => ['оперативні', GrammaticalCase::GENITIVE, Gender::MASCULINE, Number::PLURAL, 'оперативних'], // Gender is ignored for plural
             'оперативні (dative, plural)' => ['оперативні', GrammaticalCase::DATIVE, Gender::MASCULINE, Number::PLURAL, 'оперативним'],
             'оперативні (instrumental, plural)' => ['оперативні', GrammaticalCase::INSTRUMENTAL, Gender::MASCULINE, Number::PLURAL, 'оперативними'],

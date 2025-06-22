@@ -265,7 +265,11 @@ class SecondDeclensionRule implements DeclensionRuleContract
                     return mb_substr($word, 0, -3) . 'цеві';
                 }
                 $last_char_of_word = mb_substr($word, -1);
-                if ($last_char_of_word === 'й' || $last_char_of_word === 'ь') {
+                if ($last_char_of_word === 'й') {
+                    // Masculine nouns ending in -й take -ї in locative (e.g., трамвай → трамваї)
+                    return $stem . 'ї';
+                }
+                if ($last_char_of_word === 'ь') {
                     return $stem . 'єві';
                 }
                 return $stem . 'еві';

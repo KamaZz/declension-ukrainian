@@ -7,24 +7,14 @@ use Tests\TestCase;
 use UkrainianDeclension\Enums\GrammaticalCase;
 use UkrainianDeclension\Enums\Gender;
 use UkrainianDeclension\Enums\Number;
-use UkrainianDeclension\Services\Declensioner;
-use UkrainianDeclension\Services\DeclensionGroupIdentifier;
+use UkrainianDeclension\UkrainianDeclension;
 
 class DeclensionerTest extends TestCase
 {
-    private Declensioner $declensioner;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $identifier = new DeclensionGroupIdentifier();
-        $this->declensioner = new Declensioner($identifier);
-    }
-
     #[DataProvider('firstDeclensionNouns')]
     public function testFirstDeclension(string $word, GrammaticalCase $case, Number $number, string $expected): void
     {
-        $result = $this->declensioner->decline($word, $case, $number, Gender::FEMININE);
+        $result = UkrainianDeclension::decline($word, $case, $number, Gender::FEMININE);
         $this->assertEquals($expected, $result);
     }
 
@@ -45,7 +35,7 @@ class DeclensionerTest extends TestCase
     #[DataProvider('secondDeclensionNouns')]
     public function testSecondDeclension(string $word, Gender $gender, GrammaticalCase $case, Number $number, string $expected): void
     {
-        $result = $this->declensioner->decline($word, $case, $number, $gender);
+        $result = UkrainianDeclension::decline($word, $case, $number, $gender);
         $this->assertEquals($expected, $result);
     }
 
@@ -67,7 +57,7 @@ class DeclensionerTest extends TestCase
     #[DataProvider('thirdDeclensionNouns')]
     public function testThirdDeclension(string $word, GrammaticalCase $case, Number $number, string $expected): void
     {
-        $result = $this->declensioner->decline($word, $case, $number, Gender::FEMININE);
+        $result = UkrainianDeclension::decline($word, $case, $number, Gender::FEMININE);
         $this->assertEquals($expected, $result);
     }
 
@@ -86,7 +76,7 @@ class DeclensionerTest extends TestCase
     #[DataProvider('fourthDeclensionNouns')]
     public function testFourthDeclension(string $word, GrammaticalCase $case, Number $number, string $expected): void
     {
-        $result = $this->declensioner->decline($word, $case, $number, Gender::NEUTER);
+        $result = UkrainianDeclension::decline($word, $case, $number, Gender::NEUTER);
         $this->assertEquals($expected, $result);
     }
 
@@ -105,7 +95,7 @@ class DeclensionerTest extends TestCase
     #[DataProvider('genderTestCases')]
     public function testGenderGuessing(string $word, GrammaticalCase $case, string $expected): void
     {
-        $result = $this->declensioner->decline($word, $case, Number::SINGULAR);
+        $result = UkrainianDeclension::decline($word, $case, Number::SINGULAR);
         $this->assertEquals($expected, $result);
     }
 
@@ -115,18 +105,18 @@ class DeclensionerTest extends TestCase
             // Masculine
             'стіл (genitive)' => ['стіл', GrammaticalCase::GENITIVE, 'стола'],
             'кінь (dative)' => ['кінь', GrammaticalCase::DATIVE, 'коню'],
-            'трамвай (locative)' => ['трамвай', GrammaticalCase::LOCATIVE, 'трамваєві'],
+            'трамвай (locative)' => ['трамвай', GrammaticalCase::LOCATIVE, 'трамваї'],
 
             // Feminine
             'книга (genitive)' => ['книга', GrammaticalCase::GENITIVE, 'книги'],
             'земля (dative)' => ['земля', GrammaticalCase::DATIVE, 'землі'],
-            'ніч (instrumental)' => ['ніч', GrammaticalCase::INSTRUMENTAL, 'нічю'],
+            'ніч (instrumental)' => ['ніч', GrammaticalCase::INSTRUMENTAL, 'ніччю'],
             'любов (vocative)' => ['любов', GrammaticalCase::VOCATIVE, 'любове'],
 
             // Neuter
             'вікно (instrumental)' => ['вікно', GrammaticalCase::INSTRUMENTAL, 'вікном'],
             'море (locative)' => ['море', GrammaticalCase::LOCATIVE, 'морі'],
-            'життя (genitive)' => ['життя', GrammaticalCase::GENITIVE, 'життяти'],
+            'життя (genitive)' => ['життя', GrammaticalCase::GENITIVE, 'життя'],
 
             // Masculine Exceptions
             'батько (genitive)' => ['батько', GrammaticalCase::GENITIVE, 'батька'],
@@ -137,12 +127,12 @@ class DeclensionerTest extends TestCase
 
             // Feminine Exceptions
             'мати (genitive)' => ['мати', GrammaticalCase::GENITIVE, 'матері'],
-            'осінь (dative)' => ['осінь', GrammaticalCase::DATIVE, 'осіньі'],
-            'сіль (instrumental)' => ['сіль', GrammaticalCase::INSTRUMENTAL, 'сільью'],
+            'осінь (dative)' => ['осінь', GrammaticalCase::DATIVE, 'осені'],
+            'сіль (instrumental)' => ['сіль', GrammaticalCase::INSTRUMENTAL, 'сіллю'],
 
             // Neuter Exceptions
             'кошеня (genitive)' => ['кошеня', GrammaticalCase::GENITIVE, 'кошеняти'],
-            'ягня (dative)' => ['ягня', GrammaticalCase::DATIVE, 'ягняти'],
+            'ягня (dative)' => ['ягня', GrammaticalCase::DATIVE, 'ягняті'],
             'ім\'я (instrumental)' => ['ім\'я', GrammaticalCase::INSTRUMENTAL, 'іменем'],
         ];
     }

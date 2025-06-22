@@ -27,6 +27,20 @@ class FourthDeclensionRule implements DeclensionRuleContract
         $stem = mb_substr($word, 0, -1);
         $suffix = $this->getSuffix($word);
 
+        // Handle abstract nouns ending in -я (like життя, знання)
+        if ($this->isAbstractNoun($word)) {
+            switch ($case) {
+                case GrammaticalCase::GENITIVE:
+                    // Abstract nouns in -я don't change in genitive (життя → життя)
+                    return $word;
+                case GrammaticalCase::DATIVE:
+                case GrammaticalCase::LOCATIVE:
+                    return $stem . 'ю';
+                case GrammaticalCase::INSTRUMENTAL:
+                    return $stem . 'ям';
+            }
+        }
+
         // The word 'імʼя' and its group have a specific declension pattern.
         if ($suffix === 'ен') {
             $clean_stem = str_replace('\'', '', $stem);
@@ -34,17 +48,22 @@ class FourthDeclensionRule implements DeclensionRuleContract
                 case GrammaticalCase::INSTRUMENTAL:
                     return $clean_stem . 'енем';
                 default: // Genitive, Dative, Locative
-                    return $clean_stem . 'і';
+                    return $clean_stem . 'ені';
             }
         }
 
-        // For other nouns in this declension (baby animals).
+        // For baby animals (ягня, теля, etc.)
         switch ($case) {
+            case GrammaticalCase::GENITIVE:
+                return $stem . $suffix . 'и'; // кошеня → кошеняти
+            case GrammaticalCase::DATIVE:
+            case GrammaticalCase::LOCATIVE:
+                return $stem . $suffix . 'і'; // ягня → ягняті
             case GrammaticalCase::INSTRUMENTAL:
                 return $stem . $suffix . 'ям';
-            default: // Genitive, Dative, Locative
-                return $stem . $suffix . 'и';
         }
+
+        return $word;
     }
 
     public function declinePlural(string $word, GrammaticalCase $case): string
@@ -83,5 +102,16 @@ class FourthDeclensionRule implements DeclensionRuleContract
             return 'ен';
         }
         return 'ят'; // a simplification, can also be 'ат'
+    }
+
+    private function isAbstractNoun(string $word): bool
+    {
+        // Abstract nouns ending in -я that don't change in genitive
+        $abstractNouns = [
+            'життя', 'знання', 'читання', 'писання', 'розуміння', 
+            'навчання', 'кохання', 'страждання', 'бажання', 'мислення'
+        ];
+        
+        return in_array($word, $abstractNouns);
     }
 } 
