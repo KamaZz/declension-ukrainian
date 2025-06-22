@@ -58,4 +58,35 @@ class WordHelper
                 return $stem;
         }
     }
+
+    public static function guessGender(string $word): ?\UkrainianDeclension\Enums\Gender
+    {
+        $word_lower = mb_strtolower($word);
+
+        $masculine_exceptions = ['тато', 'батько', 'дідо', 'петро', 'микола'];
+        if (in_array($word_lower, $masculine_exceptions, true)) {
+            return \UkrainianDeclension\Enums\Gender::MASCULINE;
+        }
+
+        $feminine_exceptions = ['мати', 'ніч', 'осінь', 'сіль', 'любов', 'тінь'];
+        if (in_array($word_lower, $feminine_exceptions, true)) {
+            return \UkrainianDeclension\Enums\Gender::FEMININE;
+        }
+
+        $neuter_exceptions = ['життя', 'щастя', 'ягня', 'кошеня', 'ім\'я'];
+        if (in_array($word_lower, $neuter_exceptions, true)) {
+            return \UkrainianDeclension\Enums\Gender::NEUTER;
+        }
+
+        // General rules based on word endings.
+        if (self::endsWith($word_lower, ['а', 'я'])) {
+            return \UkrainianDeclension\Enums\Gender::FEMININE;
+        }
+
+        if (self::endsWith($word_lower, ['о', 'е'])) {
+            return \UkrainianDeclension\Enums\Gender::NEUTER;
+        }
+
+        return \UkrainianDeclension\Enums\Gender::MASCULINE;
+    }
 } 

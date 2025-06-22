@@ -1,6 +1,6 @@
 # Ukrainian Declension Library
 
-A simple PHP library for declining Ukrainian nouns. This library provides a straightforward way to get the correct grammatical form of a noun for any of the seven Ukrainian cases, in both singular and plural forms.
+A simple PHP library for declining Ukrainian nouns and phrases. This library provides a straightforward way to get the correct grammatical form of a noun for any of the seven Ukrainian cases, in both singular and plural forms.
 
 ## Installation
 
@@ -10,16 +10,43 @@ Install the library via Composer:
 composer require ukrainian-declension/core
 ```
 
-## Usage in Laravel
-
-This library includes a Service Provider for easy integration with Laravel applications.
-
-1.  The provider will be auto-discovered by Laravel.
-2.  You can now inject the `DeclensionerContract` anywhere in your application.
-
 ## Basic Usage
 
-Here is a simple example of how to decline a word:
+The easiest way to use the library is by calling the static `decline` method.
+
+```php
+use UkrainianDeclension\UkrainianDeclension;
+use UkrainianDeclension\Enums\GrammaticalCase;
+use UkrainianDeclension\Enums\Number;
+
+// Decline a single word
+$declinedWord = UkrainianDeclension::decline('книга', GrammaticalCase::GENITIVE, Number::SINGULAR);
+echo $declinedWord; // Outputs: книги
+
+// Decline a full name
+$declinedName = UkrainianDeclension::decline('Петренко Олексій Іванович', GrammaticalCase::DATIVE, Number::SINGULAR);
+echo $declinedName; // Outputs: Петренку Олексію Івановичу
+```
+
+## Usage in Laravel
+
+This library includes a Service Provider and Facade for easy integration with Laravel applications.
+
+1.  The provider and facade will be auto-discovered by Laravel.
+2.  You can use the `Declensioner` facade directly or inject the `DeclensionerContract` anywhere in your application.
+
+### Using the Facade
+```php
+use UkrainianDeclension\Facades\Declensioner;
+use UkrainianDeclension\Enums\GrammaticalCase;
+use UkrainianDeclension\Enums\Number;
+
+// Decline a phrase
+$declinedPhrase = Declensioner::decline('молодший лейтенант', GrammaticalCase::INSTRUMENTAL, Number::SINGULAR);
+echo $declinedPhrase; // Outputs: молодшим лейтенантом
+```
+
+### Using Dependency Injection
 
 ```php
 use UkrainianDeclension\Contracts\DeclensionerContract;
@@ -54,49 +81,18 @@ class MyController
 
 ### Gender Guessing
 
-The library can automatically guess the gender of a noun based on its ending and a set of grammatical exceptions. This means you can omit the `Gender` parameter when calling the `decline` method.
+The library can automatically guess the gender of a noun or a name within a phrase. For names, it often identifies gender by the patronymic (e.g., words ending in -ович for masculine, -івна for feminine). For single words, it uses endings and a list of exceptions.
+
+This means you can often omit the `Gender` parameter.
 
 ```php
 // The library will correctly guess that "книга" is feminine.
-$declined = $this->declensioner->decline('книга', GrammaticalCase::GENITIVE, Number::SINGULAR);
+$declined = UkrainianDeclension::decline('книга', GrammaticalCase::GENITIVE, Number::SINGULAR);
+
+// The library will guess the gender is masculine from the patronymic 'Іванович'.
+$declinedName = UkrainianDeclension::decline('Петренко Олексій Іванович', GrammaticalCase::DATIVE, Number::SINGULAR);
 ```
 
 However, you can still provide the gender for ambiguous words or to ensure accuracy.
 
-```php
-// Explicitly providing the gender.
-$declined = $this->declensioner->decline('сіль', GrammaticalCase::INSTRUMENTAL, Number::SINGULAR, Gender::FEMININE);
 ```
-
-### Available Enums
-
-The library provides several enums to ensure type-safety and clarity:
-
-#### `GrammaticalCase`
-
--   `NOMINATIVE`
--   `GENITIVE`
--   `DATIVE`
--   `ACCUSATIVE`
--   `INSTRUMENTAL`
--   `LOCATIVE`
--   `VOCATIVE`
-
-#### `Gender`
-
--   `MASCULINE`
--   `FEMININE`
--   `NEUTER`
-
-#### `Number`
-
--   `SINGULAR`
--   `PLURAL`
-
-## Testing
-
-To run the tests, execute the following command from the project root:
-
-```bash
-./vendor/bin/phpunit
-``` 

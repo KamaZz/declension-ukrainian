@@ -41,7 +41,7 @@ class Declensioner implements DeclensionerContract
         }
 
         if ($gender === null) {
-            $gender = $this->guessGender($word);
+            $gender = WordHelper::guessGender($word);
         }
 
         $declension_group = $this->identifier->identify($word, $gender);
@@ -62,36 +62,5 @@ class Declensioner implements DeclensionerContract
         }
         
         return $this->rules[$declension_group->value]->decline($word, $case, $number);
-    }
-
-    private function guessGender(string $word): Gender
-    {
-        $word_lower = mb_strtolower($word);
-
-        $masculine_exceptions = ['тато', 'батько', 'дідо', 'петро', 'микола'];
-        if (in_array($word_lower, $masculine_exceptions, true)) {
-            return Gender::MASCULINE;
-        }
-
-        $feminine_exceptions = ['мати', 'ніч', 'осінь', 'сіль', 'любов', 'тінь'];
-        if (in_array($word_lower, $feminine_exceptions, true)) {
-            return Gender::FEMININE;
-        }
-
-        $neuter_exceptions = ['життя', 'щастя', 'ягня', 'кошеня', 'ім\'я'];
-        if (in_array($word_lower, $neuter_exceptions, true)) {
-            return Gender::NEUTER;
-        }
-
-        // General rules based on word endings.
-        if (WordHelper::endsWith($word_lower, ['а', 'я'])) {
-            return Gender::FEMININE;
-        }
-
-        if (WordHelper::endsWith($word_lower, ['о', 'е'])) {
-            return Gender::NEUTER;
-        }
-
-        return Gender::MASCULINE;
     }
 }

@@ -18,30 +18,43 @@ class PhraseDeclensioner
         $this->adjectiveDeclensioner = $adjectiveDeclensioner;
     }
 
-    public function decline(string $phrase, GrammaticalCase $case, Number $number, Gender $gender): string
+    public function decline(string $phrase, GrammaticalCase $case, Number $number, ?Gender $gender = null): string
     {
         $words = explode(' ', $phrase);
-        
-        $head = [];
-        $rest = [];
+        $declinedWords = [];
 
-        if (WordHelper::endsWith($words[0], 'ий')) {
-            $head = array_slice($words, 0, 2);
-            $rest = array_slice($words, 2);
-        } else {
-            $head = array_slice($words, 0, 1);
-            $rest = array_slice($words, 1);
+        if ($gender === null) {
+            $gender = $this->guessGenderForPhrase($words);
         }
 
-        $declinedHead = [];
-        if (count($head) === 2) {
-            $declinedHead[] = $this->adjectiveDeclensioner->decline($head[0], $case, $gender, $number, true);
-            $declinedHead[] = $this->nounDeclensioner->decline($head[1], $case, $number, $gender);
-        } else {
-            $declinedHead[] = $this->nounDeclensioner->decline($head[0], $case, $number, $gender);
+        foreach ($words as $word) {
+            $declinedWords[] = $this->nounDeclensioner->decline($word, $case, $number, $gender);
         }
 
-        return implode(' ', array_merge($declinedHead, $rest));
+        return implode(' ', $declinedWords);
+    }
+
+    protected function guessGenderForPhrase(array $words): Gender
+    {
+        foreach ($words as $word) {
+            if (WordHelper::endsWith(mb_strtolower($word), 'ович')) {
+                return Gender::MASCULINE;
+            }
+            if (WordHelper::endsWith(mb_strtolower($word), ['івна', 'ївна'])) {
+                return Gender::FEMININE;
+            }
+        }
+
+        // Try to guess by the last word, assuming it might be a name.
+        if (!empty($words)) {
+            $lastWord = end($words);
+            $gender = WordHelper::guessGender($lastWord);
+            if ($gender === Gender::FEMININE) {
+                return Gender::FEMININE;
+            }
+        }
+
+        return Gender::MASCULINE;
     }
 
     protected function isAdjective(string $word): bool
