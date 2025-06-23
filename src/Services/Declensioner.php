@@ -172,13 +172,6 @@ class Declensioner implements DeclensionerContract
             throw new UnsupportedWordException("No declension rule found for group [{$declension_group->value}].");
         }
         
-        // Apply systematic locative case rules for masculine nouns
-        if ($case === GrammaticalCase::LOCATIVE && $gender === Gender::MASCULINE) {
-            $ending = $this->getLocativeEnding($word, $gender);
-            $stem = $this->getStem($word);
-            return $stem . $ending;
-        }
-        
         return $this->rules[$declension_group->value]->decline($word, $case, $number);
     }
 
