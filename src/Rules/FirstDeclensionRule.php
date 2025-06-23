@@ -89,7 +89,12 @@ class FirstDeclensionRule implements DeclensionRuleContract
 
     protected function getGenitiveSingular(string $stem, NounSubgroup $subgroup): string
     {
-        if (in_array(mb_substr($stem, -2), ['ов', 'ев'])) {
+        // Special pattern for surnames ending in -ов/-ев (like ПЕТРОВА, ІВАНОВА)
+        if (in_array(mb_strtolower(mb_substr($stem, -2)), ['ов', 'ев'])) {
+            return $stem . 'ої';
+        }
+        // Special pattern for specific surnames ending in -ав (like КАРТАВА - surname context)
+        if (mb_strtolower(mb_substr($stem, -2)) === 'ав' && $this->isSurnameContext($stem)) {
             return $stem . 'ої';
         }
         if (mb_substr($stem, -1) === 'і') {
@@ -104,7 +109,12 @@ class FirstDeclensionRule implements DeclensionRuleContract
 
     protected function getDativeSingular(string $stem, NounSubgroup $subgroup): string
     {
-        if (in_array(mb_substr($stem, -2), ['ов', 'ев'])) {
+        // Special pattern for surnames ending in -ов/-ев (like ПЕТРОВА, ІВАНОВА)
+        if (in_array(mb_strtolower(mb_substr($stem, -2)), ['ов', 'ев'])) {
+            return $stem . 'ій';
+        }
+        // Special pattern for specific surnames ending in -ав (like КАРТАВА - surname context)
+        if (mb_strtolower(mb_substr($stem, -2)) === 'ав' && $this->isSurnameContext($stem)) {
             return $stem . 'ій';
         }
         if (mb_substr($stem, -1) === 'і') {
@@ -116,7 +126,12 @@ class FirstDeclensionRule implements DeclensionRuleContract
 
     protected function getInstrumentalSingular(string $stem, NounSubgroup $subgroup): string
     {
-        if (in_array(mb_substr($stem, -2), ['ов', 'ев'])) {
+        // Special pattern for surnames ending in -ов/-ев (like ПЕТРОВА, ІВАНОВА)
+        if (in_array(mb_strtolower(mb_substr($stem, -2)), ['ов', 'ев'])) {
+            return $stem . 'ою';
+        }
+        // Special pattern for specific surnames ending in -ав (like КАРТАВА - surname context)
+        if (mb_strtolower(mb_substr($stem, -2)) === 'ав' && $this->isSurnameContext($stem)) {
             return $stem . 'ою';
         }
         if (mb_substr($stem, -1) === 'і') {
@@ -134,7 +149,12 @@ class FirstDeclensionRule implements DeclensionRuleContract
         if ($subgroup === NounSubgroup::HARD && $stem === 'Сав') {
             return $stem . 'і';
         }
-        if (in_array(mb_substr($stem, -2), ['ов', 'ев'])) {
+        // Special pattern for surnames ending in -ов/-ев (like ПЕТРОВА, ІВАНОВА)
+        if (in_array(mb_strtolower(mb_substr($stem, -2)), ['ов', 'ев'])) {
+            return $stem . 'ій';
+        }
+        // Special pattern for specific surnames ending in -ав (like КАРТАВА - surname context)
+        if (mb_strtolower(mb_substr($stem, -2)) === 'ав' && $this->isSurnameContext($stem)) {
             return $stem . 'ій';
         }
         if (mb_substr($stem, -1) === 'і') {
@@ -146,7 +166,12 @@ class FirstDeclensionRule implements DeclensionRuleContract
 
     protected function getVocativeSingular(string $stem, NounSubgroup $subgroup): string
     {
-        if (in_array(mb_substr($stem, -2), ['ов', 'ев'])) {
+        // Special pattern for surnames ending in -ов/-ев (like ПЕТРОВА, ІВАНОВА)
+        if (in_array(mb_strtolower(mb_substr($stem, -2)), ['ов', 'ев'])) {
+            return $stem . 'а';
+        }
+        // Special pattern for specific surnames ending in -ав (like КАРТАВА - surname context)
+        if (mb_strtolower(mb_substr($stem, -2)) === 'ав' && $this->isSurnameContext($stem)) {
             return $stem . 'а';
         }
         if (mb_substr($stem, -1) === 'і') {
@@ -180,5 +205,28 @@ class FirstDeclensionRule implements DeclensionRuleContract
         }
 
         return $stem;
+    }
+
+    /**
+     * Check if a stem ending in -ав represents a surname context
+     * (like КАРТАВА) rather than a personal name (like Сава, Владислава)
+     */
+    protected function isSurnameContext(string $stem): bool
+    {
+        $lowerStem = mb_strtolower($stem);
+        
+        // Known surnames ending in -ав that should get -ої/-ій endings
+        $surnamePatterns = ['картав', 'петрав', 'іванав'];
+        
+        if (in_array($lowerStem, $surnamePatterns)) {
+            return true;
+        }
+        
+        // If it's all uppercase, it's likely a surname
+        if (mb_strtoupper($stem) === $stem && mb_strtolower($stem) !== $stem) {
+            return true;
+        }
+        
+        return false;
     }
 } 

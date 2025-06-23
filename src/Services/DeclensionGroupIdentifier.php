@@ -15,12 +15,12 @@ class DeclensionGroupIdentifier implements DeclensionGroupIdentifierContract
      */
     public function identify(string $word, Gender $gender): Declension
     {
-        $last_char = mb_substr($word, -1);
+        $last_char = mb_strtolower(mb_substr($word, -1));
 
         $indeclinable_suffixes = ['енко', 'ко', 'ло'];
         if ($gender === Gender::FEMININE) {
             foreach ($indeclinable_suffixes as $suffix) {
-                if (WordHelper::endsWith($word, $suffix)) {
+                if (WordHelper::endsWith(mb_strtolower($word), $suffix)) {
                     return Declension::INDECLINABLE;
                 }
             }

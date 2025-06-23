@@ -288,7 +288,7 @@ class Declensioner implements DeclensionerContract
                     GrammaticalCase::DATIVE => 'капітану',
                     GrammaticalCase::ACCUSATIVE => 'капітана',
                     GrammaticalCase::INSTRUMENTAL => 'капітаном',
-                    GrammaticalCase::LOCATIVE => 'капітану', // Special: -у instead of -ові
+                    GrammaticalCase::LOCATIVE => 'капітанові',
                     GrammaticalCase::VOCATIVE => 'капітане',
                     default => $word, // NOMINATIVE
                 };
@@ -300,7 +300,7 @@ class Declensioner implements DeclensionerContract
                     GrammaticalCase::DATIVE => 'майору',
                     GrammaticalCase::ACCUSATIVE => 'майора',
                     GrammaticalCase::INSTRUMENTAL => 'майором',
-                    GrammaticalCase::LOCATIVE => 'майору', // Special: -у instead of -ові
+                    GrammaticalCase::LOCATIVE => 'майорові',
                     GrammaticalCase::VOCATIVE => 'майоре',
                     default => $word, // NOMINATIVE
                 };
@@ -312,7 +312,7 @@ class Declensioner implements DeclensionerContract
                     GrammaticalCase::DATIVE => 'підполковнику',
                     GrammaticalCase::ACCUSATIVE => 'підполковника',
                     GrammaticalCase::INSTRUMENTAL => 'підполковником',
-                    GrammaticalCase::LOCATIVE => 'підполковнику', // Special: -у instead of -ові
+                    GrammaticalCase::LOCATIVE => 'підполковникові',
                     GrammaticalCase::VOCATIVE => 'підполковнику',
                     default => $word, // NOMINATIVE
                 };
@@ -324,7 +324,7 @@ class Declensioner implements DeclensionerContract
                     GrammaticalCase::DATIVE => 'солдату',
                     GrammaticalCase::ACCUSATIVE => 'солдата',
                     GrammaticalCase::INSTRUMENTAL => 'солдатом',
-                    GrammaticalCase::LOCATIVE => 'солдату', // Special: -у instead of -ові
+                    GrammaticalCase::LOCATIVE => 'солдатові',
                     GrammaticalCase::VOCATIVE => 'солдате',
                     default => $word, // NOMINATIVE
                 };
@@ -336,8 +336,20 @@ class Declensioner implements DeclensionerContract
                     GrammaticalCase::DATIVE => 'лейтенанту',
                     GrammaticalCase::ACCUSATIVE => 'лейтенанта',
                     GrammaticalCase::INSTRUMENTAL => 'лейтенантом',
-                    GrammaticalCase::LOCATIVE => 'лейтенанту', // Special: -у instead of -ові
+                    GrammaticalCase::LOCATIVE => 'лейтенантові',
                     GrammaticalCase::VOCATIVE => 'лейтенанте',
+                    default => $word, // NOMINATIVE
+                };
+                break;
+                
+            case 'сержант':
+                $result = match($case) {
+                    GrammaticalCase::GENITIVE => 'сержанта',
+                    GrammaticalCase::DATIVE => 'сержанту',
+                    GrammaticalCase::ACCUSATIVE => 'сержанта',
+                    GrammaticalCase::INSTRUMENTAL => 'сержантом',
+                    GrammaticalCase::LOCATIVE => 'сержантові',
+                    GrammaticalCase::VOCATIVE => 'сержанте',
                     default => $word, // NOMINATIVE
                 };
                 break;
