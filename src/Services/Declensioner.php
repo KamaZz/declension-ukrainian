@@ -60,11 +60,10 @@ class Declensioner implements DeclensionerContract
         }
 
         // Preserve case when declining
-        $isUppercase = $this->isWordUppercase($word);
         $declined = $this->declineRegularWord($word, $case, $gender, $number);
         
-        if ($isUppercase && $declined !== $word) {
-            return $this->preserveUppercase($word, $declined);
+        if ($declined !== $word) {
+            return WordHelper::copyLetterCase($word, $declined);
         }
         
         return $declined;
@@ -75,19 +74,7 @@ class Declensioner implements DeclensionerContract
         return WordHelper::endsWith(mb_strtolower($word), 'енко');
     }
 
-    protected function isWordUppercase(string $word): bool
-    {
-        return mb_strtoupper($word) === $word && mb_strtolower($word) !== $word;
-    }
 
-    protected function preserveUppercase(string $original, string $declined): string
-    {
-        // If original word is all uppercase, make declined word uppercase too
-        if ($this->isWordUppercase($original)) {
-            return mb_strtoupper($declined);
-        }
-        return $declined;
-    }
 
     protected function isUkrainianSurname(string $word): bool
     {
@@ -119,7 +106,7 @@ class Declensioner implements DeclensionerContract
         
         // Special handling for -ов/-ев endings (more restrictive)
         // Only if it's clearly a surname pattern AND uppercase (like СУЧКОВ, ПЕТРЕНКО)
-        if ($this->isWordUppercase($word) && 
+        if (WordHelper::isWordUppercase($word) && 
             (preg_match('/[аеиіоуяєї][чквгхт]ов$/ui', $lowerWord) || 
              preg_match('/[аеиіоуяєї][чквгхт]ев$/ui', $lowerWord) ||
              WordHelper::endsWith($lowerWord, 'енко'))) {
@@ -132,7 +119,6 @@ class Declensioner implements DeclensionerContract
     protected function declineUkrainianSurname(string $word, GrammaticalCase $case, Gender $gender): string
     {
         $lowerWord = mb_strtolower($word);
-        $isUppercase = $this->isWordUppercase($word);
         
         // Special handling for surnames ending in -енко
         if (WordHelper::endsWith($lowerWord, 'енко')) {
@@ -142,7 +128,7 @@ class Declensioner implements DeclensionerContract
                 return $word; // Indeclinable for women
             } else {
                 // Decline normally for men
-                $stem = mb_substr($word, 0, -4); // Remove -енко
+                $stem = mb_substr($lowerWord, 0, -4); // Remove -енко from lowercase
                 $result = match($case) {
                     GrammaticalCase::GENITIVE => $stem . 'енка',
                     GrammaticalCase::DATIVE => $stem . 'енку', 
@@ -152,7 +138,7 @@ class Declensioner implements DeclensionerContract
                     GrammaticalCase::VOCATIVE => $word, // Unchanged
                     default => $word, // NOMINATIVE
                 };
-                return $isUppercase ? mb_strtoupper($result) : $result;
+                return WordHelper::copyLetterCase($word, $result);
             }
         }
         
@@ -160,7 +146,7 @@ class Declensioner implements DeclensionerContract
         if (preg_match('/[аеиіоуяєї][чквгхт]ов$/ui', $lowerWord) || preg_match('/[аеиіоуяєї][чквгхт]ев$/ui', $lowerWord)) {
             // Use regular declension for -ов/-ев surnames
             $declined = $this->declineRegularWord($word, $case, Gender::MASCULINE, Number::SINGULAR);
-            return $isUppercase ? $this->preserveUppercase($word, $declined) : $declined;
+            return WordHelper::copyLetterCase($word, $declined);
         }
         
         // Fall back to regular declension for other surname patterns
@@ -186,7 +172,102 @@ class Declensioner implements DeclensionerContract
             throw new UnsupportedWordException("No declension rule found for group [{$declension_group->value}].");
         }
         
+        // Apply systematic locative case rules for masculine nouns
+        if ($case === GrammaticalCase::LOCATIVE && $gender === Gender::MASCULINE) {
+            $ending = $this->getLocativeEnding($word, $gender);
+            $stem = $this->getStem($word);
+            return $stem . $ending;
+        }
+        
         return $this->rules[$declension_group->value]->decline($word, $case, $number);
+    }
+
+    protected function getLocativeEnding(string $word, Gender $gender): string
+    {
+        if ($gender !== Gender::MASCULINE) {
+            return 'і'; // Standard ending for feminine/neuter
+        }
+
+        $lowerWord = mb_strtolower($word);
+        
+        // Ukrainian grammar rules for masculine locative case:
+        
+        // 1. Nouns ending in -к, -ак, -ук, -ок take -у
+        if (preg_match('/[аеиіоуяєї]*[кг]$/u', $lowerWord) || 
+            preg_match('/ак$/u', $lowerWord) || 
+            preg_match('/ук$/u', $lowerWord) || 
+            preg_match('/ок$/u', $lowerWord)) {
+            return 'у';
+        }
+        
+        // 2. Short nouns (1-2 syllables) often take -у
+        $syllableCount = $this->countSyllables($word);
+        if ($syllableCount <= 2) {
+            // Common short nouns that take -у
+            $shortNounsWithU = [
+                'сніг', 'сад', 'гай', 'дім', 'ліс', 'край', 'рік', 'час',
+                'світ', 'дух', 'мир', 'шлях', 'бік', 'верх', 'низ', 'кінь'
+            ];
+            
+            if (in_array($lowerWord, $shortNounsWithU)) {
+                return 'у';
+            }
+        }
+        
+        // 3. Personal names often take -у (not -ові) unless they're clearly patronymics
+        if ($this->isPersonalName($word)) {
+            return 'у';
+        }
+        
+        // 4. Military ranks take -у 
+        if ($this->isMilitaryRank($word)) {
+            return 'у';
+        }
+        
+        // 5. Default for animate masculine nouns: -ові/-і
+        // But prefer -і for most cases to follow standard patterns
+        return 'і';
+    }
+
+    protected function countSyllables(string $word): int
+    {
+        $vowels = ['а', 'е', 'и', 'і', 'о', 'у', 'я', 'є', 'ї', 'ю'];
+        $count = 0;
+        $lowerWord = mb_strtolower($word);
+        
+        for ($i = 0; $i < mb_strlen($lowerWord); $i++) {
+            $char = mb_substr($lowerWord, $i, 1);
+            if (in_array($char, $vowels)) {
+                $count++;
+            }
+        }
+        
+        return max(1, $count); // At least 1 syllable
+    }
+
+    protected function isPersonalName(string $word): bool
+    {
+        $lowerWord = mb_strtolower($word);
+        
+        // Common Ukrainian first name patterns
+        $firstNamePatterns = [
+            'ан$', 'он$', 'ен$', 'ін$', 'ій$', 'ій$', 'ко$', 'ич$', 'ич$',
+            'олександр$', 'володимир$', 'михайло$', 'іван$', 'петро$', 'сергій$',
+            'андрій$', 'василь$', 'олексій$', 'дмитро$', 'максим$', 'артем$'
+        ];
+        
+        foreach ($firstNamePatterns as $pattern) {
+            if (preg_match('/' . $pattern . '/u', $lowerWord)) {
+                return true;
+            }
+        }
+        
+        // Check if it's an uppercase word (likely surname)
+        if (WordHelper::isWordUppercase($word)) {
+            return true;
+        }
+        
+        return false;
     }
 
     protected function isMilitaryRank(string $word): bool
@@ -197,7 +278,8 @@ class Declensioner implements DeclensionerContract
             'рядовий', 'молодший сержант', 'сержант', 'старший сержант', 'головний сержант',
             'штаб-сержант', 'майстер-сержант', 'старшина', 'головний старшина',
             'лейтенант', 'старший лейтенант', 'капітан', 'майор', 'підполковник', 'полковник',
-            'бригадний генерал', 'генерал-майор', 'генерал-лейтенант', 'генерал'
+            'бригадний генерал', 'генерал-майор', 'генерал-лейтенант', 'генерал',
+            'солдат', 'старший солдат'
         ];
         
         return in_array($lowerWord, $militaryRanks);
@@ -206,7 +288,6 @@ class Declensioner implements DeclensionerContract
     protected function declineMilitaryRank(string $word, GrammaticalCase $case, Gender $gender): string
     {
         $lowerWord = mb_strtolower($word);
-        $isUppercase = $this->isWordUppercase($word);
         
         // Special patterns for military ranks
         switch ($lowerWord) {
@@ -246,11 +327,57 @@ class Declensioner implements DeclensionerContract
                 };
                 break;
                 
+            case 'солдат':
+                $result = match($case) {
+                    GrammaticalCase::GENITIVE => 'солдата',
+                    GrammaticalCase::DATIVE => 'солдату',
+                    GrammaticalCase::ACCUSATIVE => 'солдата',
+                    GrammaticalCase::INSTRUMENTAL => 'солдатом',
+                    GrammaticalCase::LOCATIVE => 'солдату', // Special: -у instead of -ові
+                    GrammaticalCase::VOCATIVE => 'солдате',
+                    default => $word, // NOMINATIVE
+                };
+                break;
+                
+            case 'лейтенант':
+                $result = match($case) {
+                    GrammaticalCase::GENITIVE => 'лейтенанта',
+                    GrammaticalCase::DATIVE => 'лейтенанту',
+                    GrammaticalCase::ACCUSATIVE => 'лейтенанта',
+                    GrammaticalCase::INSTRUMENTAL => 'лейтенантом',
+                    GrammaticalCase::LOCATIVE => 'лейтенанту', // Special: -у instead of -ові
+                    GrammaticalCase::VOCATIVE => 'лейтенанте',
+                    default => $word, // NOMINATIVE
+                };
+                break;
+                
             default:
                 // For other ranks, fall back to regular declension
                 return $this->declineRegularWord($word, $case, $gender, Number::SINGULAR);
         }
         
-        return $isUppercase ? mb_strtoupper($result) : $result;
+        return WordHelper::copyLetterCase($word, $result);
+    }
+
+    protected function getStem(string $word): string
+    {
+        $lowerWord = mb_strtolower($word);
+        
+        // Remove common endings to get stem
+        if (mb_substr($lowerWord, -2) === 'ко') {
+            return mb_substr($word, 0, -2);
+        }
+        if (mb_substr($lowerWord, -2) === 'ич') {
+            return mb_substr($word, 0, -2);
+        }
+        if (mb_substr($lowerWord, -1) === 'ь') {
+            return mb_substr($word, 0, -1);
+        }
+        if (mb_substr($lowerWord, -1) === 'й') {
+            return mb_substr($word, 0, -1);
+        }
+        
+        // For most masculine nouns, the stem is the word itself
+        return $word;
     }
 }

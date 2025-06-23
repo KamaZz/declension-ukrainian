@@ -43,6 +43,11 @@ class PhraseDeclensioner
             return $this->declinePositionDescription($words, $case, $number, $gender);
         }
         
+        // Check if this is a military rank with full name (e.g., "старший лейтенант ДЖУРЯК Іван Михайлович")
+        if ($this->isMilitaryRankWithName($words)) {
+            return $this->declineMilitaryRankWithName($words, $case, $number, $gender);
+        }
+        
         // For other phrases (names, etc.), use the original logic
         $declinedWords = [];
         
@@ -64,7 +69,8 @@ class PhraseDeclensioner
 
     protected function isAdjective(string $word): bool
     {
-        return WordHelper::endsWith(mb_strtolower($word), 'ий');
+        $lowerWord = mb_strtolower($word);
+        return mb_strlen($lowerWord) >= 2 && mb_substr($lowerWord, -2) === 'ий';
     }
 
     protected function isFullName(array $words): bool
@@ -105,19 +111,12 @@ class PhraseDeclensioner
             return $word;
         }
         
-        // For phrases, use regular declension to avoid applying surname/military rules to common words
-        // Only apply special rules if the word is clearly a name or military rank in context
-        if ($this->isObviousNameOrRank($word)) {
-            $declined = $this->nounDeclensioner->decline($word, $case, $number, $gender);
-        } else {
-            // Use regular declension rules directly
-            $declined = $this->declineWordRegularly($word, $case, $number, $gender);
-        }
+        // Always use the main declensioner which has all the special rules
+        $declined = $this->nounDeclensioner->decline($word, $case, $number, $gender);
         
         // Preserve case when declining
-        $isUppercase = $this->isWordUppercase($word);
-        if ($isUppercase && $declined !== $word) {
-            return $this->preserveUppercase($word, $declined);
+        if ($declined !== $word) {
+            return WordHelper::copyLetterCase($word, $declined);
         }
         
         return $declined;
@@ -130,19 +129,7 @@ class PhraseDeclensioner
 
 
 
-    protected function isWordUppercase(string $word): bool
-    {
-        return mb_strtoupper($word) === $word && mb_strtolower($word) !== $word;
-    }
 
-    protected function preserveUppercase(string $original, string $declined): string
-    {
-        // If original word is all uppercase, make declined word uppercase too
-        if ($this->isWordUppercase($original)) {
-            return mb_strtoupper($declined);
-        }
-        return $declined;
-    }
 
     protected function shouldSkipDeclension(string $word): bool
     {
@@ -181,7 +168,7 @@ class PhraseDeclensioner
         }
         
         // Clear surname patterns (only very obvious ones)
-        if (WordHelper::endsWith($lowerWord, 'енко') && $this->isWordUppercase($word)) {
+        if (WordHelper::endsWith($lowerWord, 'енко') && WordHelper::isWordUppercase($word)) {
             return true;
         }
         
@@ -206,9 +193,9 @@ class PhraseDeclensioner
         
         // Common position titles
         $positionTitles = [
-            'командир', 'заступник', 'начальник', 'головний', 'старший', 'молодший',
-            'оперативний', 'черговий', 'фельдшер', 'кухар', 'оператор', 'водій',
-            'механік', 'стрілець', 'гранатометник', 'кулеметник', 'снайпер'
+            'командир', 'заступник', 'начальник', 'головний', 'оперативний', 'черговий', 
+            'фельдшер', 'кухар', 'оператор', 'водій', 'механік', 'стрілець', 
+            'гранатометник', 'кулеметник', 'снайпер'
         ];
         
         // Military ranks
@@ -216,9 +203,17 @@ class PhraseDeclensioner
             'сержант', 'старшина', 'лейтенант', 'капітан', 'майор', 'підполковник', 'полковник'
         ];
         
-        // Check if first word is a position title or if second word is a military rank
-        if (in_array($firstWord, $positionTitles) || in_array($secondWord, $militaryRanks)) {
+        // Check if first word is a position title (but exclude "старший" and "молодший" when they're part of rank names)
+        if (in_array($firstWord, $positionTitles)) {
             return true;
+        }
+        
+        // Check if second word is a military rank and we don't have a name pattern
+        if (in_array($secondWord, $militaryRanks)) {
+            // Only consider it a position if it doesn't look like "rank + surname + name + patronymic"
+            if (count($words) < 5 || !$this->hasNamePattern($words, 2)) {
+                return true;
+            }
         }
         
         // Check if the phrase contains typical position description patterns
@@ -228,6 +223,21 @@ class PhraseDeclensioner
         }
         
         return false;
+    }
+
+    protected function hasNamePattern(array $words, int $startIndex): bool
+    {
+        if (count($words) < $startIndex + 3) {
+            return false;
+        }
+        
+        $surname = $words[$startIndex] ?? '';
+        $firstName = $words[$startIndex + 1] ?? '';
+        $patronymic = $words[$startIndex + 2] ?? '';
+        
+        return WordHelper::isWordUppercase($surname) &&
+               $this->isFirstName($firstName) &&
+               $this->isPatronymic($patronymic);
     }
 
     protected function declinePositionDescription(array $words, GrammaticalCase $case, Number $number, Gender $gender): string
@@ -282,5 +292,121 @@ class PhraseDeclensioner
         }
         
         return false;
+    }
+
+    protected function isMilitaryRankWithName(array $words): bool
+    {
+        if (count($words) < 4) {
+            return false;
+        }
+
+        // Check if first word or first two words form a military rank
+        $firstWord = mb_strtolower($words[0]);
+        $firstTwoWords = count($words) >= 2 ? mb_strtolower($words[0] . ' ' . $words[1]) : '';
+        
+        $singleWordRanks = ['підполковник', 'капітан', 'майор', 'лейтенант', 'сержант', 'солдат'];
+        $twoWordRanks = [
+            'старший лейтенант', 'молодший лейтенант', 'старший сержант', 
+            'молодший сержант', 'головний сержант', 'штаб сержант',
+            'майстер сержант', 'головний старшина', 'старший солдат'
+        ];
+        
+        $isSingleWordRank = in_array($firstWord, $singleWordRanks);
+        $isTwoWordRank = in_array($firstTwoWords, $twoWordRanks);
+        
+        if (!$isSingleWordRank && !$isTwoWordRank) {
+            return false;
+        }
+
+        // Determine where the name starts (after rank)
+        $nameStartIndex = $isTwoWordRank ? 2 : 1;
+        
+        // Check if we have surname + first name + patronymic pattern
+        if (count($words) >= $nameStartIndex + 3) {
+            $surname = $words[$nameStartIndex];
+            $firstName = $words[$nameStartIndex + 1];
+            $patronymic = $words[$nameStartIndex + 2];
+            
+            // Check if surname is uppercase and first name/patronymic have proper endings
+            return WordHelper::isWordUppercase($surname) &&
+                   $this->isFirstName($firstName) &&
+                   $this->isPatronymic($patronymic);
+        }
+
+        return false;
+    }
+
+    protected function declineMilitaryRankWithName(array $words, GrammaticalCase $case, Number $number, Gender $gender): string
+    {
+        $declinedWords = [];
+        
+        // Determine if this is a two-word rank
+        $firstWord = mb_strtolower($words[0]);
+        $firstTwoWords = count($words) >= 2 ? mb_strtolower($words[0] . ' ' . $words[1]) : '';
+        $twoWordRanks = [
+            'старший лейтенант', 'молодший лейтенант', 'старший сержант', 
+            'молодший сержант', 'головний сержант', 'штаб сержант',
+            'майстер сержант', 'головний старшина', 'старший солдат'
+        ];
+        $isTwoWordRank = in_array($firstTwoWords, $twoWordRanks);
+        $nameStartIndex = $isTwoWordRank ? 2 : 1;
+        
+        foreach ($words as $index => $word) {
+            if ($index === 0) {
+                // Decline the first part of military rank
+                if ($this->isAdjective($word)) {
+                    $declinedWords[] = $this->adjectiveDeclensioner->decline($word, $case, $gender, $number, true);
+                } else {
+                    $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
+                }
+            } elseif ($index === 1 && $isTwoWordRank) {
+                // Decline the second part of military rank (only for two-word ranks)
+                $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
+            } elseif ($index >= $nameStartIndex) {
+                // Decline names (surname, first name, patronymic)
+                // Check if this word is actually an adjective (e.g., СЛАБКИЙ)
+                if ($this->isAdjective($word)) {
+                    $declinedWords[] = $this->adjectiveDeclensioner->decline($word, $case, $gender, $number, true);
+                } else {
+                    $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
+                }
+            } else {
+                // For single word ranks, this handles the name parts
+                // Check if this word is actually an adjective (e.g., СЛАБКИЙ)
+                if ($this->isAdjective($word)) {
+                    $declinedWords[] = $this->adjectiveDeclensioner->decline($word, $case, $gender, $number, true);
+                } else {
+                    $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
+                }
+            }
+        }
+        
+        return implode(' ', $declinedWords);
+    }
+
+    protected function isFirstName(string $word): bool
+    {
+        // Common Ukrainian first name patterns
+        $lowerWord = mb_strtolower($word);
+        
+        // Male names often end with consonants, -ій, -ій, -ан, -ен, etc.
+        // Female names often end with -а, -я, -ія
+        $malePatterns = ['р', 'н', 'л', 'й', 'ій', 'ан', 'ен', 'он', 'ич', 'ко'];
+        $femalePatterns = ['а', 'я', 'іа', 'ія', 'на', 'ла'];
+        
+        foreach (array_merge($malePatterns, $femalePatterns) as $pattern) {
+            if (WordHelper::endsWith($lowerWord, $pattern)) {
+                return true;
+            }
+        }
+        
+        // Accept any word that looks like a name (starts with uppercase)
+        return WordHelper::isTitleCase($word);
+    }
+
+    protected function isPatronymic(string $word): bool
+    {
+        $lowerWord = mb_strtolower($word);
+        return WordHelper::endsWith($lowerWord, ['ович', 'йович', 'івич', 'евич', 'івна', 'ївна', 'овна']);
     }
 } 

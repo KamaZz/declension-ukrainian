@@ -25,7 +25,7 @@ class AdjectiveDeclensioner
     {
         $stem = $this->getMasculineStem($adjective);
 
-        return match ($case) {
+        $result = match ($case) {
             GrammaticalCase::NOMINATIVE => $adjective,
             GrammaticalCase::GENITIVE => $stem . 'ого',
             GrammaticalCase::DATIVE => $stem . 'ому',
@@ -34,13 +34,20 @@ class AdjectiveDeclensioner
             GrammaticalCase::LOCATIVE => $stem . 'ому',
             GrammaticalCase::VOCATIVE => $adjective,
         };
+
+        // Preserve case if the result is different from the original
+        if ($result !== $adjective) {
+            return \UkrainianDeclension\Utils\WordHelper::copyLetterCase($adjective, $result);
+        }
+
+        return $result;
     }
 
     protected function declineFeminine(string $adjective, GrammaticalCase $case): string
     {
         $stem = $this->getFeminineStem($adjective);
 
-        return match ($case) {
+        $result = match ($case) {
             GrammaticalCase::NOMINATIVE => $adjective,
             GrammaticalCase::GENITIVE => $stem . 'ої',
             GrammaticalCase::DATIVE => $stem . 'ій',
@@ -49,13 +56,20 @@ class AdjectiveDeclensioner
             GrammaticalCase::LOCATIVE => $stem . 'ій',
             GrammaticalCase::VOCATIVE => $adjective,
         };
+
+        // Preserve case if the result is different from the original
+        if ($result !== $adjective) {
+            return \UkrainianDeclension\Utils\WordHelper::copyLetterCase($adjective, $result);
+        }
+
+        return $result;
     }
 
     protected function declineNeuter(string $adjective, GrammaticalCase $case): string
     {
         $stem = $this->getNeuterStem($adjective);
 
-        return match ($case) {
+        $result = match ($case) {
             GrammaticalCase::NOMINATIVE => $adjective,
             GrammaticalCase::GENITIVE => $stem . 'ого',
             GrammaticalCase::DATIVE => $stem . 'ому',
@@ -64,13 +78,20 @@ class AdjectiveDeclensioner
             GrammaticalCase::LOCATIVE => $stem . 'ому',
             GrammaticalCase::VOCATIVE => $adjective,
         };
+
+        // Preserve case if the result is different from the original
+        if ($result !== $adjective) {
+            return \UkrainianDeclension\Utils\WordHelper::copyLetterCase($adjective, $result);
+        }
+
+        return $result;
     }
 
     protected function declinePlural(string $adjective, GrammaticalCase $case, bool $isAnimate): string
     {
         $stem = $this->getPluralStem($adjective);
 
-        return match ($case) {
+        $result = match ($case) {
             GrammaticalCase::NOMINATIVE => $adjective,
             GrammaticalCase::GENITIVE => $stem . 'их',
             GrammaticalCase::DATIVE => $stem . 'им',
@@ -79,6 +100,13 @@ class AdjectiveDeclensioner
             GrammaticalCase::LOCATIVE => $stem . 'их',
             GrammaticalCase::VOCATIVE => $adjective,
         };
+
+        // Preserve case if the result is different from the original
+        if ($result !== $adjective) {
+            return \UkrainianDeclension\Utils\WordHelper::copyLetterCase($adjective, $result);
+        }
+
+        return $result;
     }
 
     protected function getMasculineStem(string $adjective): string

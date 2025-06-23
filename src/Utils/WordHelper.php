@@ -89,4 +89,59 @@ class WordHelper
 
         return \UkrainianDeclension\Enums\Gender::MASCULINE;
     }
+
+    /**
+     * Copy letter case pattern from source word to target word
+     * Similar to shevchenko-js copyLetterCase function
+     */
+    public static function copyLetterCase(string $source, string $target): string
+    {
+        if (mb_strlen($source) === 0 || mb_strlen($target) === 0) {
+            return $target;
+        }
+
+        // If source is all uppercase, return target in uppercase
+        if (mb_strtoupper($source) === $source && mb_strtolower($source) !== $source) {
+            return mb_strtoupper($target);
+        }
+
+        // If source is all lowercase, return target in lowercase
+        if (mb_strtolower($source) === $source) {
+            return mb_strtolower($target);
+        }
+
+        // If source starts with uppercase (title case), make target title case
+        $firstChar = mb_substr($source, 0, 1);
+        if (mb_strtoupper($firstChar) === $firstChar && mb_strtolower($firstChar) !== $firstChar) {
+            return mb_strtoupper(mb_substr($target, 0, 1)) . mb_strtolower(mb_substr($target, 1));
+        }
+
+        // Default: return target as-is
+        return $target;
+    }
+
+    /**
+     * Check if a word is all uppercase
+     */
+    public static function isWordUppercase(string $word): bool
+    {
+        return mb_strtoupper($word) === $word && mb_strtolower($word) !== $word;
+    }
+
+    /**
+     * Check if a word is title case (first letter uppercase, rest lowercase)
+     */
+    public static function isTitleCase(string $word): bool
+    {
+        if (mb_strlen($word) === 0) {
+            return false;
+        }
+        
+        $firstChar = mb_substr($word, 0, 1);
+        $restChars = mb_substr($word, 1);
+        
+        return mb_strtoupper($firstChar) === $firstChar && 
+               mb_strtolower($firstChar) !== $firstChar &&
+               (mb_strlen($restChars) === 0 || mb_strtolower($restChars) === $restChars);
+    }
 } 
