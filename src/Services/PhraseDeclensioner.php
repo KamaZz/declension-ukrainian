@@ -104,11 +104,6 @@ class PhraseDeclensioner
 
     protected function declineWordWithSpecialRules(string $word, GrammaticalCase $case, Number $number, Gender $gender): string
     {
-        // Handle surnames ending in -енко in vocative case (they remain unchanged)
-        if ($case === GrammaticalCase::VOCATIVE && $this->isSurnameEnko($word)) {
-            return $word;
-        }
-        
         // Always use the main declensioner which has all the special rules
         $declined = $this->nounDeclensioner->decline($word, $case, $number, $gender);
         
@@ -405,15 +400,15 @@ class PhraseDeclensioner
         
         foreach ($words as $index => $word) {
             if ($index === 0) {
-                // Decline the first part of military rank
+                // Decline the first part of military rank (always masculine)
                 if ($this->isAdjective($word)) {
-                    $declinedWords[] = $this->adjectiveDeclensioner->decline($word, $case, $gender, $number, true);
+                    $declinedWords[] = $this->adjectiveDeclensioner->decline($word, $case, Gender::MASCULINE, $number, true);
                 } else {
-                    $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
+                    $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, Gender::MASCULINE);
                 }
             } elseif ($index === 1 && $isTwoWordRank) {
-                // Decline the second part of military rank (only for two-word ranks)
-                $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
+                // Decline the second part of military rank (always masculine)
+                $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, Gender::MASCULINE);
             } elseif ($index >= $nameStartIndex) {
                 // Decline names (surname, first name, patronymic)
                 // Check if this word is actually an adjective (e.g., СЛАБКИЙ)
@@ -427,43 +422,16 @@ class PhraseDeclensioner
                     
                     // Handle surnames in military context
                     if ($index === $nameStartIndex) {
-                        // ДЖУРЯК case: surnames ending in -як get special handling
-                        if (WordHelper::endsWith($lowerSurname, 'як')) {
-                            if ($case === GrammaticalCase::LOCATIVE) {
-                                // ДЖУРЯК → ДЖУРЯКУ (gets -у in military context)
-                                $declinedWords[] = WordHelper::copyLetterCase($word, $lowerWord . 'у');
-                            } elseif ($case === GrammaticalCase::VOCATIVE) {
-                                // ДЖУРЯК → ДЖУРЯК (remains unchanged in military context)
-                                $declinedWords[] = $word;
-                            } else {
-                                $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
-                            }
-                        } else {
-                            $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
-                        }
+                        // Use systematic declension for all surnames
+                        $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
                     }
                     // Handle first names in military context 
                     elseif ($index === $nameStartIndex + 1) {
-                        // Special handling for Олександр based on surname context
-                        if ($lowerWord === 'олександр' && $case === GrammaticalCase::LOCATIVE) {
-                            $surnameEnding = mb_strtolower(mb_substr($surname, -2));
-                            // In СМОЛЯРОВ context (ending -ов), Олександр gets -у
-                            // In ПЕТРЕНКО context (ending -ко), Олександр gets -ові
-                            if ($surnameEnding === 'ов' || $surnameEnding === 'ев') {
-                                $declinedWords[] = WordHelper::copyLetterCase($word, 'олександру');
-                            } else {
-                                $declinedWords[] = WordHelper::copyLetterCase($word, 'олександрові');
-                            }
-                        }
-                        // Special handling for first names in military context that get -у in locative
-                        elseif ($case === GrammaticalCase::LOCATIVE) {
-                            // Based on MilitaryRankTest patterns, certain first names get -у in specific surname contexts
-                            $firstNamesWithU = ['іван', 'руслан'];
-                            $surnamesRequiringU = ['джуряк', 'слабкий'];
-                            
-                            if (in_array($lowerWord, $firstNamesWithU) && 
-                                (WordHelper::endsWith($lowerSurname, 'як') || in_array($lowerSurname, $surnamesRequiringU))) {
-                                // Іван/Руслан get -у in military context with specific surnames
+                        // Systematic handling for first names with adjectival surnames
+                        if ($case === GrammaticalCase::LOCATIVE) {
+                            // When paired with adjectival surnames (ending in -ий), certain first names get -у instead of -ові
+                            if ($this->isAdjective($surname) && WordHelper::endsWith($lowerWord, 'ан')) {
+                                // Names ending in -ан get -у when paired with adjectival surnames (e.g., СЛАБКИЙ Руслан → Руслану)
                                 $declinedWords[] = WordHelper::copyLetterCase($word, $lowerWord . 'у');
                             } else {
                                 $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);

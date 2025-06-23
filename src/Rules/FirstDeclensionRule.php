@@ -132,7 +132,7 @@ class FirstDeclensionRule implements DeclensionRuleContract
     protected function getLocativeSingular(string $stem, NounSubgroup $subgroup): string
     {
         if ($subgroup === NounSubgroup::HARD && $stem === 'Сав') {
-            return $stem . 'ові';
+            return $stem . 'і';
         }
         if (in_array(mb_substr($stem, -2), ['ов', 'ев'])) {
             return $stem . 'ій';

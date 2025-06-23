@@ -45,9 +45,7 @@ class Declensioner implements DeclensionerContract
         }
 
         // Handle special cases before general declension
-        if ($case === GrammaticalCase::VOCATIVE && $this->isSurnameEnko($word)) {
-            return $word; // Surnames ending in -енко remain unchanged in vocative
-        }
+        // (removed -енко vocative special case - they should be declined normally)
         
         // Handle Ukrainian surname declension patterns
         if ($this->isUkrainianSurname($word)) {
@@ -134,8 +132,8 @@ class Declensioner implements DeclensionerContract
                     GrammaticalCase::DATIVE => $stem . 'енку', 
                     GrammaticalCase::ACCUSATIVE => $stem . 'енка',
                     GrammaticalCase::INSTRUMENTAL => $stem . 'енком',
-                    GrammaticalCase::LOCATIVE => $stem . 'енку',
-                    GrammaticalCase::VOCATIVE => $word, // Unchanged
+                    GrammaticalCase::LOCATIVE => $stem . 'енкові',
+                    GrammaticalCase::VOCATIVE => $stem . 'енку',
                     default => $word, // NOMINATIVE
                 };
                 return WordHelper::copyLetterCase($word, $result);

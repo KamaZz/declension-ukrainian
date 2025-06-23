@@ -33,8 +33,8 @@ class NameDeclensionTest extends TestCase
                 'dative' => 'Тарасенку Леоніду Васильовичу',
                 'accusative' => 'Тарасенка Леоніда Васильовича',
                 'instrumental' => 'Тарасенком Леонідом Васильовичем',
-                'locative' => 'Тарасенку Леонідові Васильовичу',
-                'vocative' => 'Тарасенко Леоніде Васильовичу', // Fixed: surname -енко remains unchanged in vocative (consistent with other -енко surnames)
+                'locative' => 'Тарасенкові Леонідові Васильовичу',
+                'vocative' => 'Тарасенку Леоніде Васильовичу', // Fixed: surname -енко gets -у in vocative (consistent with other -енко surnames)
             ],
             'Руда Сергій Казимирович' => [
                 'genitive' => 'Руди Сергія Казимировича',
@@ -57,15 +57,15 @@ class NameDeclensionTest extends TestCase
                 'dative' => 'Деркачу Михайлу Олександровичу',
                 'accusative' => 'Деркача Михайла Олександровича',
                 'instrumental' => 'Деркачем Михайлом Олександровичем',
-                'locative' => 'Деркачу Михайлові Олександровичу',
-                'vocative' => 'Деркачу Михайле Олександровичу',
+                'locative' => 'Деркачеві Михайлові Олександровичу',
+                'vocative' => 'Деркаче Михайле Олександровичу',
             ],
             'Пасічник Назар Федорович' => [
                 'genitive' => 'Пасічника Назара Федоровича',
                 'dative' => 'Пасічнику Назару Федоровичу',
                 'accusative' => 'Пасічника Назара Федоровича',
                 'instrumental' => 'Пасічником Назаром Федоровичем',
-                'locative' => 'Пасічнику Назарові Федоровичу',
+                'locative' => 'Пасічникові Назарові Федоровичу',
                 'vocative' => 'Пасічнику Назаре Федоровичу',
             ],
             'Дубина Сава Орестович' => [
@@ -73,7 +73,7 @@ class NameDeclensionTest extends TestCase
                 'dative' => 'Дубині Саві Орестовичу',
                 'accusative' => 'Дубину Саву Орестовича',
                 'instrumental' => 'Дубиною Савою Орестовичем',
-                'locative' => 'Дубині Савові Орестовичу',
+                'locative' => 'Дубині Саві Орестовичу',
                 'vocative' => 'Дубино Саво Орестовичу',
             ],
             'Тимошенко Вадим Владиславович' => [
@@ -81,16 +81,16 @@ class NameDeclensionTest extends TestCase
                 'dative' => 'Тимошенку Вадиму Владиславовичу',
                 'accusative' => 'Тимошенка Вадима Владиславовича',
                 'instrumental' => 'Тимошенком Вадимом Владиславовичем',
-                'locative' => 'Тимошенку Вадимові Владиславовичу',
-                'vocative' => 'Тимошенко Вадиме Владиславовичу', // Fixed: surname -енко remains unchanged in vocative
+                'locative' => 'Тимошенкові Вадимові Владиславовичу',
+                'vocative' => 'Тимошенку Вадиме Владиславовичу', // Fixed: surname -енко remains unchanged in vocative
             ],
             'Васильченко Руслан Пилипович' => [
                 'genitive' => 'Васильченка Руслана Пилиповича',
                 'dative' => 'Васильченку Руслану Пилиповичу', // Fixed: consistent spelling
                 'accusative' => 'Васильченка Руслана Пилиповича', // Fixed: consistent spelling
                 'instrumental' => 'Васильченком Русланом Пилиповичем', // Fixed: consistent spelling
-                'locative' => 'Васильченку Русланові Пилиповичу', // Fixed: consistent spelling
-                'vocative' => 'Васильченко Руслане Пилиповичу', // Fixed: surname -енко remains unchanged in vocative
+                'locative' => 'Васильченкові Русланові Пилиповичу', // Fixed: consistent spelling
+                'vocative' => 'Васильченку Руслане Пилиповичу', // Fixed: surname -енко remains unchanged in vocative
             ],
             'Буряк Віталій Вадимович' => [
                 'genitive' => 'Буряка Віталія Вадимовича',
