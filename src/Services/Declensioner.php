@@ -26,7 +26,7 @@ class Declensioner implements DeclensionerContract
     
     // Static arrays for better performance
     private const COMMON_WORDS_EXCLUSIONS = ['любов', 'основ', 'морков', 'здоров', 'групи', 'групе', 'групу', 'групою', 'групах'];
-    private const SURNAME_PATTERNS = ['енко', 'ський', 'цький', 'ич', 'юк', 'як', 'ук', 'ів'];
+    private const SURNAME_PATTERNS = ['енко', 'ський', 'цький', 'ич', 'юк', 'як', 'ук', 'ів', 'ець'];
     private const VOWELS = ['а', 'е', 'и', 'і', 'о', 'у', 'я', 'є', 'ї', 'ю'];
     private const SHORT_NOUNS_WITH_U = [
         'сніг', 'сад', 'гай', 'дім', 'ліс', 'край', 'рік', 'час',
@@ -143,6 +143,40 @@ class Declensioner implements DeclensionerContract
                     GrammaticalCase::INSTRUMENTAL => $stem . 'енком',
                     GrammaticalCase::LOCATIVE => $stem . 'енкові',
                     GrammaticalCase::VOCATIVE => $stem . 'енку',
+                    default => $word, // NOMINATIVE
+                };
+                return WordHelper::copyLetterCase($word, $result);
+            }
+        }
+        
+        // Special handling for surnames ending in -ець
+        if (WordHelper::endsWith($lowerWord, 'ець')) {
+            // Distinguish between occupation-based words and regular surnames
+            $occupationWordsInEts = ['кравець', 'стрілець', 'борець', 'творець', 'співець'];
+            
+            if (in_array($lowerWord, $occupationWordsInEts)) {
+                // Occupation-based words ending in -ець get special -цю ending in locative
+                $stem = mb_substr($lowerWord, 0, -3); // Remove -ець from lowercase
+                $result = match($case) {
+                    GrammaticalCase::GENITIVE => $stem . 'ця',
+                    GrammaticalCase::DATIVE => $stem . 'цю',
+                    GrammaticalCase::ACCUSATIVE => $stem . 'ця',
+                    GrammaticalCase::INSTRUMENTAL => $stem . 'цем',
+                    GrammaticalCase::LOCATIVE => $stem . 'цю',  // Special: occupation words get -цю
+                    GrammaticalCase::VOCATIVE => $stem . 'цю',
+                    default => $word, // NOMINATIVE
+                };
+                return WordHelper::copyLetterCase($word, $result);
+            } else {
+                // Regular surnames ending in -ець get -цеві in locative (like Горобець)
+                $stem = mb_substr($lowerWord, 0, -3); // Remove -ець from lowercase
+                $result = match($case) {
+                    GrammaticalCase::GENITIVE => $stem . 'ця',
+                    GrammaticalCase::DATIVE => $stem . 'цю',
+                    GrammaticalCase::ACCUSATIVE => $stem . 'ця',
+                    GrammaticalCase::INSTRUMENTAL => $stem . 'цем',
+                    GrammaticalCase::LOCATIVE => $stem . 'цеві',  // Regular surnames get -цеві
+                    GrammaticalCase::VOCATIVE => $stem . 'цю',
                     default => $word, // NOMINATIVE
                 };
                 return WordHelper::copyLetterCase($word, $result);

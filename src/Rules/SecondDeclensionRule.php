@@ -60,7 +60,10 @@ class SecondDeclensionRule implements DeclensionRuleContract
         $subgroup = $this->getSubgroup($word);
         $stem = $word;
 
-        if (in_array(mb_substr($word, -1), ['о', 'е'])) {
+        // Special handling for masculine surnames ending in -о (e.g., ПАНЬКО)
+        if (mb_strtolower(mb_substr($word, -1)) === 'о' && $this->isSurname($word)) {
+            $stem = mb_substr($word, 0, -1);
+        } elseif (in_array(mb_substr($word, -1), ['о', 'е'])) {
             $stem = mb_substr($word, 0, -1);
         } else {
             $stem = WordHelper::getStem($word);
@@ -77,6 +80,10 @@ class SecondDeclensionRule implements DeclensionRuleContract
                 }
                 return $word;
             case GrammaticalCase::INSTRUMENTAL:
+                // Special case for words ending in -ець (e.g., КРАВЕЦЬ → КРАВЦЕМ)
+                if(WordHelper::endsWith(mb_strtolower($word), 'ець')){
+                    return mb_substr($word, 0, -3) . 'цем';
+                }
                 // Surnames ending in -ь replace -ь with -ем (e.g., КНЯЗЬ → КНЯЗЕМ)
                 if (mb_strtolower(mb_substr($word, -1)) === 'ь' && $this->isSurname($word)) {
                     return mb_substr($word, 0, -1) . 'ем';
@@ -88,9 +95,6 @@ class SecondDeclensionRule implements DeclensionRuleContract
                     }
                     if ($last_char === 'і') {
                         $stem = mb_substr($stem, 0, -1) . 'о';
-                    }
-                    if(WordHelper::endsWith($word, 'ець')){
-                        return mb_substr($word, 0, -3) . 'цем';
                     }
                     return $stem . 'ем';
                 }
@@ -221,7 +225,7 @@ class SecondDeclensionRule implements DeclensionRuleContract
             return NounSubgroup::MIXED;
         }
 
-        if (in_array($last_char, ['ь', 'й'], true) || WordHelper::endsWith($word, 'ець') || ($last_two === 'ій') || ($last_char === 'р' && $this->gender === Gender::NEUTER)) {
+        if (in_array($last_char, ['ь', 'й'], true) || WordHelper::endsWith(mb_strtolower($word), 'ець') || ($last_two === 'ій') || ($last_char === 'р' && $this->gender === Gender::NEUTER)) {
              return NounSubgroup::SOFT;
         }
         
@@ -242,7 +246,7 @@ class SecondDeclensionRule implements DeclensionRuleContract
 
     protected function getGenitiveMasculineSingular(string $stem, NounSubgroup $subgroup, string $word): string
     {
-        if(WordHelper::endsWith($word, 'ець')){
+        if(WordHelper::endsWith(mb_strtolower($word), 'ець')){
             return mb_substr($word, 0, -3) . 'ця';
         }
         // Surnames ending in -ь replace -ь with -я (e.g., КНЯЗЬ → КНЯЗЯ)
@@ -257,7 +261,7 @@ class SecondDeclensionRule implements DeclensionRuleContract
         if (WordHelper::endsWith($word, 'ович')) {
             return $stem . 'у';
         }
-        if (WordHelper::endsWith($word, 'ець')) {
+        if (WordHelper::endsWith(mb_strtolower($word), 'ець')) {
             return mb_substr($word, 0, -3) . 'цю';
         }
         // Surnames ending in -ь replace -ь with -ю (e.g., КНЯЗЬ → КНЯЗЮ)
@@ -269,6 +273,18 @@ class SecondDeclensionRule implements DeclensionRuleContract
 
     protected function getLocativeSingular(string $stem, NounSubgroup $subgroup, string $word): string
     {
+        // Special case for occupation words ending in -ець (e.g., КРАВЕЦЬ → КРАВЦЮ)
+        // But surnames ending in -ець get regular surname treatment (e.g., Горобець → Горобцеві)
+        if (WordHelper::endsWith(mb_strtolower($word), 'ець')) {
+            $lowerWord = mb_strtolower($word);
+            // Occupation-based words ending in -ець get special -цю ending
+            $occupationWordsInEts = ['кравець', 'стрілець', 'борець', 'творець', 'співець'];
+            if (in_array($lowerWord, $occupationWordsInEts)) {
+                return mb_substr($word, 0, -3) . 'цю';
+            }
+            // Surnames ending in -ець get regular surname pattern (continue to surname logic below)
+        }
+        
         // Special case: masculine names ending in -а should be declined like feminine words
         if (mb_strtolower($word) === 'сава') {
             // Сава gets -і in locative (following feminine pattern)
@@ -290,6 +306,12 @@ class SecondDeclensionRule implements DeclensionRuleContract
             // Ukrainian grammar: distinguish between surnames and first names
             // Based on NameDeclensionTest expectations:
             if ($this->isSurname($word)) {
+                // Special handling for surnames ending in -ець (e.g., Горобець → Горобцеві)
+                if (WordHelper::endsWith(mb_strtolower($word), 'ець')) {
+                    // This should be reached for Горобець and return Горобцеві
+                    return mb_substr($word, 0, -3) . 'цеві';
+                }
+                
                 // Surnames ending in -енко get -ові in locative (e.g., ПЕТРЕНКО → ПЕТРЕНКОВІ)
                 if (WordHelper::endsWith(mb_strtolower($word), 'енко')) {
                     return $stem . 'ові';
@@ -310,9 +332,6 @@ class SecondDeclensionRule implements DeclensionRuleContract
             // Apply Ukrainian anthroponym patterns for first names
             // Based on shevchenko-js and Ukrainian grammar rules
             if ($subgroup === NounSubgroup::SOFT) {
-                if (WordHelper::endsWith($word, 'ець')) {
-                    return mb_substr($word, 0, -3) . 'цеві';
-                }
                 // Names ending in -ій (e.g., Віталій → Віталієві, Сергій → Сергієві)
                 if (WordHelper::endsWith(mb_strtolower($word), 'ій')) {
                     return mb_substr($word, 0, -2) . 'ієві';
@@ -365,7 +384,7 @@ class SecondDeclensionRule implements DeclensionRuleContract
         if (WordHelper::endsWith($word, 'ович')) {
             return $stem . 'у';
         }
-        if (WordHelper::endsWith($word, 'ець')) {
+        if (WordHelper::endsWith(mb_strtolower($word), 'ець')) {
             return mb_substr($word, 0, -3) . 'цю';
         }
         
@@ -382,6 +401,11 @@ class SecondDeclensionRule implements DeclensionRuleContract
             // Surnames ending in -енко get -у in vocative (e.g., ПЕТРЕНКО → ПЕТРЕНКУ)
             if (WordHelper::endsWith($lowerWord, 'енко')) {
                 return $stem . 'у';
+            }
+            
+            // Surnames ending in -о get -у in vocative (e.g., ПАНЬКО → ПАНЬКУ)
+            if (WordHelper::endsWith($lowerWord, 'о')) {
+                return mb_substr($word, 0, -1) . 'у';
             }
             
             // Special handling for -ов/-ев surnames
@@ -524,7 +548,7 @@ class SecondDeclensionRule implements DeclensionRuleContract
         
         // Common surname patterns
         $surnamePatterns = [
-            'енко$', 'ський$', 'цький$', 'ич$', 'юк$', 'як$', 'ук$', 'ів$', 'ов$', 'ев$', 'ач$', 'ик$'
+            'енко$', 'ський$', 'цький$', 'ич$', 'юк$', 'як$', 'ук$', 'ів$', 'ов$', 'ев$', 'ач$', 'ик$', 'ко$', 'ець$'
         ];
         
         foreach ($surnamePatterns as $pattern) {

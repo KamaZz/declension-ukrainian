@@ -432,16 +432,11 @@ class PhraseDeclensioner
                     }
                     // Handle first names in military context 
                     elseif ($index === $nameStartIndex + 1) {
-                        // Systematic handling for first names with adjectival surnames
+                        // Systematic handling for first names in military context
                         if ($case === GrammaticalCase::LOCATIVE) {
-                            // When paired with adjectival surnames (ending in -ий), certain first names get -у instead of -ові
-                            $originalSurname = $words[$nameStartIndex] ?? '';
-                            if ($this->isAdjective(mb_strtolower($originalSurname)) && WordHelper::endsWith($lowerWord, 'ан')) {
-                                // Names ending in -ан get -у when paired with adjectival surnames (e.g., СЛАБКИЙ Руслан → Руслану)
-                                $declinedWords[] = WordHelper::copyLetterCase($word, $lowerWord . 'у');
-                            } else {
-                                $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
-                            }
+                            $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
+                        } elseif ($case === GrammaticalCase::VOCATIVE) {
+                            $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
                         } else {
                             $declinedWords[] = $this->declineWordWithSpecialRules($word, $case, $number, $gender);
                         }
