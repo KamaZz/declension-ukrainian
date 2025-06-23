@@ -73,7 +73,7 @@ class WordHelper
             return \UkrainianDeclension\Enums\Gender::FEMININE;
         }
 
-        $neuter_exceptions = ['життя', 'щастя', 'ягня', 'кошеня', 'ім\'я'];
+        $neuter_exceptions = ['життя', 'щастя', 'ягня', 'кошеня', 'теля', 'ім\'я'];
         if (in_array($word_lower, $neuter_exceptions, true)) {
             return \UkrainianDeclension\Enums\Gender::NEUTER;
         }

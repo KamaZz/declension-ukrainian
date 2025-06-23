@@ -40,6 +40,16 @@ class SecondDeclensionRule implements DeclensionRuleContract
             return $adjDeclensioner->decline($word, $case, Gender::MASCULINE, Number::SINGULAR, $this->isAnimate);
         }
 
+        // Special handling for surnames ending in -ов/-ев (like СУЧКОВ, ПЕТРОВ, etc.)
+        if (preg_match('/ов$/ui', $word) || preg_match('/ев$/ui', $word)) {
+            // Additional check to ensure it's a surname pattern (not common words like "любов")
+            $lowerWord = mb_strtolower($word);
+            $commonWords = ['любов', 'основ', 'морков', 'здоров'];
+            if (!in_array($lowerWord, $commonWords)) {
+                return $this->declineSurnameOvEv($word, $case);
+            }
+        }
+
         $subgroup = $this->getSubgroup($word);
         $stem = $word;
 
@@ -192,6 +202,10 @@ class SecondDeclensionRule implements DeclensionRuleContract
             return NounSubgroup::MIXED;
         }
 
+        // Only specific -р endings should be MIXED, not all consonant+р combinations
+        if ($last_char === 'р' && in_array($last_two, ['тр', 'др', 'бр', 'пр', 'кр', 'гр'])) {
+            return NounSubgroup::HARD; // Names like Олександр, Петр should be HARD
+        }
         if ($last_char === 'р' && !in_array($last_two, ['ар', 'ор', 'ер', 'ир'])) {
             return NounSubgroup::MIXED;
         }
@@ -264,6 +278,10 @@ class SecondDeclensionRule implements DeclensionRuleContract
                 if (WordHelper::endsWith($word, 'ець')) {
                     return mb_substr($word, 0, -3) . 'цеві';
                 }
+                // Special case for names ending in -ій (e.g., Віталій → Віталієві, Сергій → Сергієві)
+                if (WordHelper::endsWith($word, 'ій')) {
+                    return mb_substr($word, 0, -2) . 'ієві';
+                }
                 $last_char_of_word = mb_substr($word, -1);
                 if ($last_char_of_word === 'й') {
                     // Masculine nouns ending in -й take -ї in locative (e.g., трамвай → трамваї)
@@ -310,5 +328,30 @@ class SecondDeclensionRule implements DeclensionRuleContract
         }
 
         return $stem . 'е';
+    }
+
+    protected function declineSurnameOvEv(string $word, GrammaticalCase $case): string
+    {
+        // For surnames ending in -ов/-ев (like СУЧКОВ), the pattern is:
+        // СУЧКОВ → СУЧКОВА/СУЧКОВУ/СУЧКОВИМ etc.
+        // We need to replace the В with the appropriate ending
+        $stem = mb_substr($word, 0, -1); // Remove the В: СУЧКОВ → СУЧКО
+        
+        switch ($case) {
+            case GrammaticalCase::GENITIVE:
+                return $stem . 'ва';
+            case GrammaticalCase::DATIVE:
+                return $stem . 'ву';
+            case GrammaticalCase::ACCUSATIVE:
+                return $stem . 'ва';
+            case GrammaticalCase::INSTRUMENTAL:
+                return $stem . 'вим';
+            case GrammaticalCase::LOCATIVE:
+                return $stem . 'ву';
+            case GrammaticalCase::VOCATIVE:
+                return $stem . 'ву';
+            default: // NOMINATIVE
+                return $word;
+        }
     }
 }
