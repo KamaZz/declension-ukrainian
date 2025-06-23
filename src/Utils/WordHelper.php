@@ -6,6 +6,14 @@ use UkrainianDeclension\Enums\NounSubgroup;
 
 class WordHelper
 {
+    // Static arrays for better performance
+    private const MASCULINE_EXCEPTIONS = ['тато', 'батько', 'дідо', 'петро', 'микола'];
+    private const FEMININE_EXCEPTIONS = ['мати', 'ніч', 'осінь', 'сіль', 'любов', 'тінь'];
+    private const NEUTER_EXCEPTIONS = ['життя', 'щастя', 'ягня', 'кошеня', 'теля', 'ім\'я'];
+    private const FEMININE_ENDINGS = ['а', 'я'];
+    private const NEUTER_ENDINGS = ['о', 'е'];
+    private const SOFT_CONSONANT_ENDINGS = ['ь', 'й'];
+
     public static function getStem(string $word): string
     {
         if ($word === 'стіл') {
@@ -17,7 +25,7 @@ class WordHelper
 
         $last_char = mb_substr($word, -1);
 
-        if (in_array($last_char, ['ь', 'й'])) {
+        if (in_array($last_char, self::SOFT_CONSONANT_ENDINGS)) {
             return mb_substr($word, 0, -1);
         }
 
@@ -63,27 +71,24 @@ class WordHelper
     {
         $word_lower = mb_strtolower($word);
 
-        $masculine_exceptions = ['тато', 'батько', 'дідо', 'петро', 'микола'];
-        if (in_array($word_lower, $masculine_exceptions, true)) {
+        if (in_array($word_lower, self::MASCULINE_EXCEPTIONS, true)) {
             return \UkrainianDeclension\Enums\Gender::MASCULINE;
         }
 
-        $feminine_exceptions = ['мати', 'ніч', 'осінь', 'сіль', 'любов', 'тінь'];
-        if (in_array($word_lower, $feminine_exceptions, true)) {
+        if (in_array($word_lower, self::FEMININE_EXCEPTIONS, true)) {
             return \UkrainianDeclension\Enums\Gender::FEMININE;
         }
 
-        $neuter_exceptions = ['життя', 'щастя', 'ягня', 'кошеня', 'теля', 'ім\'я'];
-        if (in_array($word_lower, $neuter_exceptions, true)) {
+        if (in_array($word_lower, self::NEUTER_EXCEPTIONS, true)) {
             return \UkrainianDeclension\Enums\Gender::NEUTER;
         }
 
         // General rules based on word endings.
-        if (self::endsWith($word_lower, ['а', 'я'])) {
+        if (self::endsWith($word_lower, self::FEMININE_ENDINGS)) {
             return \UkrainianDeclension\Enums\Gender::FEMININE;
         }
 
-        if (self::endsWith($word_lower, ['о', 'е'])) {
+        if (self::endsWith($word_lower, self::NEUTER_ENDINGS)) {
             return \UkrainianDeclension\Enums\Gender::NEUTER;
         }
 
@@ -96,23 +101,33 @@ class WordHelper
      */
     public static function copyLetterCase(string $source, string $target): string
     {
-        if (mb_strlen($source) === 0 || mb_strlen($target) === 0) {
+        $sourceLength = mb_strlen($source);
+        $targetLength = mb_strlen($target);
+        
+        if ($sourceLength === 0 || $targetLength === 0) {
             return $target;
         }
 
+        // Cache case computations to avoid repeated calls
+        $sourceUpper = mb_strtoupper($source);
+        $sourceLower = mb_strtolower($source);
+        
         // If source is all uppercase, return target in uppercase
-        if (mb_strtoupper($source) === $source && mb_strtolower($source) !== $source) {
+        if ($sourceUpper === $source && $sourceLower !== $source) {
             return mb_strtoupper($target);
         }
 
         // If source is all lowercase, return target in lowercase
-        if (mb_strtolower($source) === $source) {
+        if ($sourceLower === $source) {
             return mb_strtolower($target);
         }
 
         // If source starts with uppercase (title case), make target title case
         $firstChar = mb_substr($source, 0, 1);
-        if (mb_strtoupper($firstChar) === $firstChar && mb_strtolower($firstChar) !== $firstChar) {
+        $firstCharUpper = mb_strtoupper($firstChar);
+        $firstCharLower = mb_strtolower($firstChar);
+        
+        if ($firstCharUpper === $firstChar && $firstCharLower !== $firstChar) {
             return mb_strtoupper(mb_substr($target, 0, 1)) . mb_strtolower(mb_substr($target, 1));
         }
 
@@ -125,7 +140,9 @@ class WordHelper
      */
     public static function isWordUppercase(string $word): bool
     {
-        return mb_strtoupper($word) === $word && mb_strtolower($word) !== $word;
+        $upper = mb_strtoupper($word);
+        $lower = mb_strtolower($word);
+        return $upper === $word && $lower !== $word;
     }
 
     /**
@@ -133,15 +150,24 @@ class WordHelper
      */
     public static function isTitleCase(string $word): bool
     {
-        if (mb_strlen($word) === 0) {
+        $length = mb_strlen($word);
+        if ($length === 0) {
             return false;
         }
         
         $firstChar = mb_substr($word, 0, 1);
-        $restChars = mb_substr($word, 1);
+        $firstCharUpper = mb_strtoupper($firstChar);
+        $firstCharLower = mb_strtolower($firstChar);
         
-        return mb_strtoupper($firstChar) === $firstChar && 
-               mb_strtolower($firstChar) !== $firstChar &&
-               (mb_strlen($restChars) === 0 || mb_strtolower($restChars) === $restChars);
+        if ($firstCharUpper !== $firstChar || $firstCharLower === $firstChar) {
+            return false;
+        }
+        
+        if ($length === 1) {
+            return true;
+        }
+        
+        $restChars = mb_substr($word, 1);
+        return mb_strtolower($restChars) === $restChars;
     }
 } 

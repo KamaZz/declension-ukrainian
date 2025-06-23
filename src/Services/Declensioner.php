@@ -20,6 +20,30 @@ class Declensioner implements DeclensionerContract
     protected DeclensionGroupIdentifierContract $identifier;
     protected ?PhraseDeclensioner $phraseDeclensioner = null;
     protected array $rules = [];
+    
+    // Cache for rule objects to avoid repeated instantiation
+    private static array $ruleCache = [];
+    
+    // Static arrays for better performance
+    private const COMMON_WORDS_EXCLUSIONS = ['любов', 'основ', 'морков', 'здоров', 'групи', 'групе', 'групу', 'групою', 'групах'];
+    private const SURNAME_PATTERNS = ['енко', 'ський', 'цький', 'ич', 'юк', 'як', 'ук', 'ів'];
+    private const VOWELS = ['а', 'е', 'и', 'і', 'о', 'у', 'я', 'є', 'ї', 'ю'];
+    private const SHORT_NOUNS_WITH_U = [
+        'сніг', 'сад', 'гай', 'дім', 'ліс', 'край', 'рік', 'час',
+        'світ', 'дух', 'мир', 'шлях', 'бік', 'верх', 'низ', 'кінь'
+    ];
+    private const FIRST_NAME_PATTERNS = [
+        'ан$', 'он$', 'ен$', 'ін$', 'ій$', 'ко$', 'ич$',
+        'олександр$', 'володимир$', 'михайло$', 'іван$', 'петро$', 'сергій$',
+        'андрій$', 'василь$', 'олексій$', 'дмитро$', 'максим$', 'артем$'
+    ];
+    private const MILITARY_RANKS = [
+        'рядовий', 'молодший сержант', 'сержант', 'старший сержант', 'головний сержант',
+        'штаб-сержант', 'майстер-сержант', 'старшина', 'головний старшина',
+        'лейтенант', 'старший лейтенант', 'капітан', 'майор', 'підполковник', 'полковник',
+        'бригадний генерал', 'генерал-майор', 'генерал-лейтенант', 'генерал',
+        'солдат', 'старший солдат'
+    ];
 
     public function __construct(DeclensionGroupIdentifierContract $identifier)
     {
@@ -44,17 +68,20 @@ class Declensioner implements DeclensionerContract
             $gender = WordHelper::guessGender($word);
         }
 
+        // Cache lowercase version to avoid repeated calls
+        $lowerWord = mb_strtolower($word);
+
         // Handle special cases before general declension
         // (removed -енко vocative special case - they should be declined normally)
         
         // Handle Ukrainian surname declension patterns
-        if ($this->isUkrainianSurname($word)) {
-            return $this->declineUkrainianSurname($word, $case, $gender);
+        if ($this->isUkrainianSurname($word, $lowerWord)) {
+            return $this->declineUkrainianSurname($word, $lowerWord, $case, $gender);
         }
         
         // Handle military ranks
-        if ($this->isMilitaryRank($word)) {
-            return $this->declineMilitaryRank($word, $case, $gender);
+        if ($this->isMilitaryRank($lowerWord)) {
+            return $this->declineMilitaryRank($word, $lowerWord, $case, $gender);
         }
 
         // Preserve case when declining
@@ -67,36 +94,20 @@ class Declensioner implements DeclensionerContract
         return $declined;
     }
 
-    protected function isSurnameEnko(string $word): bool
+    protected function isSurnameEnko(string $lowerWord): bool
     {
-        return WordHelper::endsWith(mb_strtolower($word), 'енко');
+        return WordHelper::endsWith($lowerWord, 'енко');
     }
 
-
-
-    protected function isUkrainianSurname(string $word): bool
+    protected function isUkrainianSurname(string $word, string $lowerWord): bool
     {
-        $lowerWord = mb_strtolower($word);
-        
         // Exclude common words that end in surname-like patterns but aren't surnames
-        $commonWords = ['любов', 'основ', 'морков', 'здоров', 'групи', 'групе', 'групу', 'групою', 'групах'];
-        if (in_array($lowerWord, $commonWords)) {
+        if (in_array($lowerWord, self::COMMON_WORDS_EXCLUSIONS)) {
             return false;
         }
         
         // Only check for clear surname patterns, not general uppercase words
-        $surnamePatterns = [
-            'енко',   // Петренко, Коваленко
-            'ський',  // Левицький  
-            'цький',  // Українцький
-            'ич',     // Петрович (patronymics used as surnames)
-            'юк',     // Федорчук
-            'як',     // Костюк
-            'ук',     // Семенюк
-            'ів',     // Петрів
-        ];
-        
-        foreach ($surnamePatterns as $pattern) {
+        foreach (self::SURNAME_PATTERNS as $pattern) {
             if (WordHelper::endsWith($lowerWord, $pattern)) {
                 return true;
             }
@@ -114,10 +125,8 @@ class Declensioner implements DeclensionerContract
         return false;
     }
 
-    protected function declineUkrainianSurname(string $word, GrammaticalCase $case, Gender $gender): string
+    protected function declineUkrainianSurname(string $word, string $lowerWord, GrammaticalCase $case, Gender $gender): string
     {
-        $lowerWord = mb_strtolower($word);
-        
         // Special handling for surnames ending in -енко
         if (WordHelper::endsWith($lowerWord, 'енко')) {
             // According to Ukrainian grammar, -енко surnames are indeclinable for women
@@ -159,18 +168,20 @@ class Declensioner implements DeclensionerContract
             return $word;
         }
 
-        $this->rules = [
-            Declension::FIRST->value => new FirstDeclensionRule(),
-            Declension::SECOND->value => new SecondDeclensionRule($gender),
-            Declension::THIRD->value => new ThirdDeclensionRule(),
-            Declension::FOURTH->value => new FourthDeclensionRule(),
-        ];
+        // Use cached rules to avoid repeated object creation
+        $ruleKey = $declension_group->value . '_' . $gender->value;
         
-        if (!isset($this->rules[$declension_group->value])) {
-            throw new UnsupportedWordException("No declension rule found for group [{$declension_group->value}].");
+        if (!isset(self::$ruleCache[$ruleKey])) {
+            self::$ruleCache[$ruleKey] = match($declension_group) {
+                Declension::FIRST => new FirstDeclensionRule(),
+                Declension::SECOND => new SecondDeclensionRule($gender),
+                Declension::THIRD => new ThirdDeclensionRule(),
+                Declension::FOURTH => new FourthDeclensionRule(),
+                default => throw new UnsupportedWordException("No declension rule found for group [{$declension_group->value}]."),
+            };
         }
         
-        return $this->rules[$declension_group->value]->decline($word, $case, $number);
+        return self::$ruleCache[$ruleKey]->decline($word, $case, $number);
     }
 
     protected function getLocativeEnding(string $word, Gender $gender): string
@@ -192,26 +203,21 @@ class Declensioner implements DeclensionerContract
         }
         
         // 2. Short nouns (1-2 syllables) often take -у
-        $syllableCount = $this->countSyllables($word);
+        $syllableCount = $this->countSyllables($lowerWord);
         if ($syllableCount <= 2) {
             // Common short nouns that take -у
-            $shortNounsWithU = [
-                'сніг', 'сад', 'гай', 'дім', 'ліс', 'край', 'рік', 'час',
-                'світ', 'дух', 'мир', 'шлях', 'бік', 'верх', 'низ', 'кінь'
-            ];
-            
-            if (in_array($lowerWord, $shortNounsWithU)) {
+            if (in_array($lowerWord, self::SHORT_NOUNS_WITH_U)) {
                 return 'у';
             }
         }
         
         // 3. Personal names often take -у (not -ові) unless they're clearly patronymics
-        if ($this->isPersonalName($word)) {
+        if ($this->isPersonalName($word, $lowerWord)) {
             return 'у';
         }
         
         // 4. Military ranks take -у 
-        if ($this->isMilitaryRank($word)) {
+        if ($this->isMilitaryRank($lowerWord)) {
             return 'у';
         }
         
@@ -220,15 +226,14 @@ class Declensioner implements DeclensionerContract
         return 'і';
     }
 
-    protected function countSyllables(string $word): int
+    protected function countSyllables(string $lowerWord): int
     {
-        $vowels = ['а', 'е', 'и', 'і', 'о', 'у', 'я', 'є', 'ї', 'ю'];
         $count = 0;
-        $lowerWord = mb_strtolower($word);
+        $length = mb_strlen($lowerWord);
         
-        for ($i = 0; $i < mb_strlen($lowerWord); $i++) {
+        for ($i = 0; $i < $length; $i++) {
             $char = mb_substr($lowerWord, $i, 1);
-            if (in_array($char, $vowels)) {
+            if (in_array($char, self::VOWELS)) {
                 $count++;
             }
         }
@@ -236,18 +241,10 @@ class Declensioner implements DeclensionerContract
         return max(1, $count); // At least 1 syllable
     }
 
-    protected function isPersonalName(string $word): bool
+    protected function isPersonalName(string $word, string $lowerWord): bool
     {
-        $lowerWord = mb_strtolower($word);
-        
         // Common Ukrainian first name patterns
-        $firstNamePatterns = [
-            'ан$', 'он$', 'ен$', 'ін$', 'ій$', 'ій$', 'ко$', 'ич$', 'ич$',
-            'олександр$', 'володимир$', 'михайло$', 'іван$', 'петро$', 'сергій$',
-            'андрій$', 'василь$', 'олексій$', 'дмитро$', 'максим$', 'артем$'
-        ];
-        
-        foreach ($firstNamePatterns as $pattern) {
+        foreach (self::FIRST_NAME_PATTERNS as $pattern) {
             if (preg_match('/' . $pattern . '/u', $lowerWord)) {
                 return true;
             }
@@ -261,105 +258,78 @@ class Declensioner implements DeclensionerContract
         return false;
     }
 
-    protected function isMilitaryRank(string $word): bool
+    protected function isMilitaryRank(string $lowerWord): bool
     {
-        $lowerWord = mb_strtolower($word);
-        
-        $militaryRanks = [
-            'рядовий', 'молодший сержант', 'сержант', 'старший сержант', 'головний сержант',
-            'штаб-сержант', 'майстер-сержант', 'старшина', 'головний старшина',
-            'лейтенант', 'старший лейтенант', 'капітан', 'майор', 'підполковник', 'полковник',
-            'бригадний генерал', 'генерал-майор', 'генерал-лейтенант', 'генерал',
-            'солдат', 'старший солдат'
-        ];
-        
-        return in_array($lowerWord, $militaryRanks);
+        return in_array($lowerWord, self::MILITARY_RANKS);
     }
 
-    protected function declineMilitaryRank(string $word, GrammaticalCase $case, Gender $gender): string
+    protected function declineMilitaryRank(string $word, string $lowerWord, GrammaticalCase $case, Gender $gender): string
     {
-        $lowerWord = mb_strtolower($word);
-        
         // Special patterns for military ranks
-        switch ($lowerWord) {
-            case 'капітан':
-                $result = match($case) {
-                    GrammaticalCase::GENITIVE => 'капітана',
-                    GrammaticalCase::DATIVE => 'капітану',
-                    GrammaticalCase::ACCUSATIVE => 'капітана',
-                    GrammaticalCase::INSTRUMENTAL => 'капітаном',
-                    GrammaticalCase::LOCATIVE => 'капітанові',
-                    GrammaticalCase::VOCATIVE => 'капітане',
-                    default => $word, // NOMINATIVE
-                };
-                break;
-                
-            case 'майор':
-                $result = match($case) {
-                    GrammaticalCase::GENITIVE => 'майора',
-                    GrammaticalCase::DATIVE => 'майору',
-                    GrammaticalCase::ACCUSATIVE => 'майора',
-                    GrammaticalCase::INSTRUMENTAL => 'майором',
-                    GrammaticalCase::LOCATIVE => 'майорові',
-                    GrammaticalCase::VOCATIVE => 'майоре',
-                    default => $word, // NOMINATIVE
-                };
-                break;
-                
-            case 'підполковник':
-                $result = match($case) {
-                    GrammaticalCase::GENITIVE => 'підполковника',
-                    GrammaticalCase::DATIVE => 'підполковнику',
-                    GrammaticalCase::ACCUSATIVE => 'підполковника',
-                    GrammaticalCase::INSTRUMENTAL => 'підполковником',
-                    GrammaticalCase::LOCATIVE => 'підполковникові',
-                    GrammaticalCase::VOCATIVE => 'підполковнику',
-                    default => $word, // NOMINATIVE
-                };
-                break;
-                
-            case 'солдат':
-                $result = match($case) {
-                    GrammaticalCase::GENITIVE => 'солдата',
-                    GrammaticalCase::DATIVE => 'солдату',
-                    GrammaticalCase::ACCUSATIVE => 'солдата',
-                    GrammaticalCase::INSTRUMENTAL => 'солдатом',
-                    GrammaticalCase::LOCATIVE => 'солдатові',
-                    GrammaticalCase::VOCATIVE => 'солдате',
-                    default => $word, // NOMINATIVE
-                };
-                break;
-                
-            case 'лейтенант':
-                $result = match($case) {
-                    GrammaticalCase::GENITIVE => 'лейтенанта',
-                    GrammaticalCase::DATIVE => 'лейтенанту',
-                    GrammaticalCase::ACCUSATIVE => 'лейтенанта',
-                    GrammaticalCase::INSTRUMENTAL => 'лейтенантом',
-                    GrammaticalCase::LOCATIVE => 'лейтенантові',
-                    GrammaticalCase::VOCATIVE => 'лейтенанте',
-                    default => $word, // NOMINATIVE
-                };
-                break;
-                
-            case 'сержант':
-                $result = match($case) {
-                    GrammaticalCase::GENITIVE => 'сержанта',
-                    GrammaticalCase::DATIVE => 'сержанту',
-                    GrammaticalCase::ACCUSATIVE => 'сержанта',
-                    GrammaticalCase::INSTRUMENTAL => 'сержантом',
-                    GrammaticalCase::LOCATIVE => 'сержантові',
-                    GrammaticalCase::VOCATIVE => 'сержанте',
-                    default => $word, // NOMINATIVE
-                };
-                break;
-                
-            default:
-                // For other ranks, fall back to regular declension
-                return $this->declineRegularWord($word, $case, $gender, Number::SINGULAR);
+        $result = match($lowerWord) {
+            'капітан' => match($case) {
+                GrammaticalCase::GENITIVE => 'капітана',
+                GrammaticalCase::DATIVE => 'капітану',
+                GrammaticalCase::ACCUSATIVE => 'капітана',
+                GrammaticalCase::INSTRUMENTAL => 'капітаном',
+                GrammaticalCase::LOCATIVE => 'капітанові',
+                GrammaticalCase::VOCATIVE => 'капітане',
+                default => $word, // NOMINATIVE
+            },
+            'майор' => match($case) {
+                GrammaticalCase::GENITIVE => 'майора',
+                GrammaticalCase::DATIVE => 'майору',
+                GrammaticalCase::ACCUSATIVE => 'майора',
+                GrammaticalCase::INSTRUMENTAL => 'майором',
+                GrammaticalCase::LOCATIVE => 'майорові',
+                GrammaticalCase::VOCATIVE => 'майоре',
+                default => $word, // NOMINATIVE
+            },
+            'підполковник' => match($case) {
+                GrammaticalCase::GENITIVE => 'підполковника',
+                GrammaticalCase::DATIVE => 'підполковнику',
+                GrammaticalCase::ACCUSATIVE => 'підполковника',
+                GrammaticalCase::INSTRUMENTAL => 'підполковником',
+                GrammaticalCase::LOCATIVE => 'підполковникові',
+                GrammaticalCase::VOCATIVE => 'підполковнику',
+                default => $word, // NOMINATIVE
+            },
+            'солдат' => match($case) {
+                GrammaticalCase::GENITIVE => 'солдата',
+                GrammaticalCase::DATIVE => 'солдату',
+                GrammaticalCase::ACCUSATIVE => 'солдата',
+                GrammaticalCase::INSTRUMENTAL => 'солдатом',
+                GrammaticalCase::LOCATIVE => 'солдатові',
+                GrammaticalCase::VOCATIVE => 'солдате',
+                default => $word, // NOMINATIVE
+            },
+            'лейтенант' => match($case) {
+                GrammaticalCase::GENITIVE => 'лейтенанта',
+                GrammaticalCase::DATIVE => 'лейтенанту',
+                GrammaticalCase::ACCUSATIVE => 'лейтенанта',
+                GrammaticalCase::INSTRUMENTAL => 'лейтенантом',
+                GrammaticalCase::LOCATIVE => 'лейтенантові',
+                GrammaticalCase::VOCATIVE => 'лейтенанте',
+                default => $word, // NOMINATIVE
+            },
+            'сержант' => match($case) {
+                GrammaticalCase::GENITIVE => 'сержанта',
+                GrammaticalCase::DATIVE => 'сержанту',
+                GrammaticalCase::ACCUSATIVE => 'сержанта',
+                GrammaticalCase::INSTRUMENTAL => 'сержантом',
+                GrammaticalCase::LOCATIVE => 'сержантові',
+                GrammaticalCase::VOCATIVE => 'сержанте',
+                default => $word, // NOMINATIVE
+            },
+            default => null
+        };
+        
+        if ($result !== null) {
+            return WordHelper::copyLetterCase($word, $result);
         }
         
-        return WordHelper::copyLetterCase($word, $result);
+        // For other ranks, fall back to regular declension
+        return $this->declineRegularWord($word, $case, $gender, Number::SINGULAR);
     }
 
     protected function getStem(string $word): string

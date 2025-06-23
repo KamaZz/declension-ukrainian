@@ -10,34 +10,39 @@ use UkrainianDeclension\Utils\WordHelper;
 
 class DeclensionGroupIdentifier implements DeclensionGroupIdentifierContract
 {
+    // Static arrays for better performance
+    private const INDECLINABLE_SUFFIXES = ['енко', 'ко', 'ло'];
+    private const INDECLINABLE_FEMININE_SURNAMES = ['Голуб', 'Боровик', 'Присяжнюк'];
+    private const FIRST_DECLENSION_ENDINGS = ['а', 'я'];
+    private const FOURTH_DECLENSION_ENDINGS = ['а', 'я'];
+
     /**
      * @inheritDoc
      */
     public function identify(string $word, Gender $gender): Declension
     {
-        $last_char = mb_strtolower(mb_substr($word, -1));
+        $lowerWord = mb_strtolower($word);
+        $last_char = mb_substr($lowerWord, -1);
 
-        $indeclinable_suffixes = ['енко', 'ко', 'ло'];
         if ($gender === Gender::FEMININE) {
-            foreach ($indeclinable_suffixes as $suffix) {
-                if (WordHelper::endsWith(mb_strtolower($word), $suffix)) {
+            foreach (self::INDECLINABLE_SUFFIXES as $suffix) {
+                if (WordHelper::endsWith($lowerWord, $suffix)) {
                     return Declension::INDECLINABLE;
                 }
             }
         }
         
-        $indeclinable_feminine_surnames = ['Голуб', 'Боровик', 'Присяжнюк'];
-        if ($gender === Gender::FEMININE && in_array($word, $indeclinable_feminine_surnames, true)) {
+        if ($gender === Gender::FEMININE && in_array($word, self::INDECLINABLE_FEMININE_SURNAMES, true)) {
             return Declension::INDECLINABLE;
         }
 
         // Fourth declension: neuter nouns ending in -а, -я
-        if ($gender === Gender::NEUTER && in_array($last_char, ['а', 'я'])) {
+        if ($gender === Gender::NEUTER && in_array($last_char, self::FOURTH_DECLENSION_ENDINGS)) {
             return Declension::FOURTH;
         }
 
         // First declension: feminine, masculine, common nouns ending in -а, -я
-        if (in_array($last_char, ['а', 'я'])) {
+        if (in_array($last_char, self::FIRST_DECLENSION_ENDINGS)) {
             return Declension::FIRST;
         }
 
@@ -51,6 +56,6 @@ class DeclensionGroupIdentifier implements DeclensionGroupIdentifierContract
             return Declension::SECOND;
         }
 
-        throw new UnsupportedWordException("Could not determine declension group for word '{$word}'.");
+        throw new UnsupportedWordException("Unable to identify declension group for word: {$word}");
     }
 } 

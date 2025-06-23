@@ -111,11 +111,12 @@ class AdjectiveDeclensioner
 
     protected function getMasculineStem(string $adjective): string
     {
-        if (mb_substr($adjective, -2) === 'ий') {
-            return mb_substr($adjective, 0, -2);
-        }
-        if (mb_substr($adjective, -2) === 'ій') {
-            return mb_substr($adjective, 0, -2);
+        $length = mb_strlen($adjective);
+        if ($length >= 2) {
+            $lastTwo = mb_substr($adjective, -2);
+            if ($lastTwo === 'ий' || $lastTwo === 'ій') {
+                return mb_substr($adjective, 0, -2);
+            }
         }
         
         return mb_substr($adjective, 0, -2); // fallback
@@ -123,10 +124,8 @@ class AdjectiveDeclensioner
 
     protected function getFeminineStem(string $adjective): string
     {
-        if (mb_substr($adjective, -1) === 'а') {
-            return mb_substr($adjective, 0, -1);
-        }
-        if (mb_substr($adjective, -1) === 'я') {
+        $lastChar = mb_substr($adjective, -1);
+        if ($lastChar === 'а' || $lastChar === 'я') {
             return mb_substr($adjective, 0, -1);
         }
         
@@ -135,10 +134,8 @@ class AdjectiveDeclensioner
 
     protected function getNeuterStem(string $adjective): string
     {
-        if (mb_substr($adjective, -1) === 'е') {
-            return mb_substr($adjective, 0, -1);
-        }
-        if (mb_substr($adjective, -1) === 'є') {
+        $lastChar = mb_substr($adjective, -1);
+        if ($lastChar === 'е' || $lastChar === 'є') {
             return mb_substr($adjective, 0, -1);
         }
         
@@ -147,10 +144,8 @@ class AdjectiveDeclensioner
 
     protected function getPluralStem(string $adjective): string
     {
-        if (mb_substr($adjective, -1) === 'і') {
-            return mb_substr($adjective, 0, -1);
-        }
-        if (mb_substr($adjective, -1) === 'ї') {
+        $lastChar = mb_substr($adjective, -1);
+        if ($lastChar === 'і' || $lastChar === 'ї') {
             return mb_substr($adjective, 0, -1);
         }
         
