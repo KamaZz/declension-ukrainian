@@ -26,7 +26,7 @@ class Declensioner implements DeclensionerContract
     
     // Static arrays for better performance
     private const COMMON_WORDS_EXCLUSIONS = ['любов', 'основ', 'морков', 'здоров', 'групи', 'групе', 'групу', 'групою', 'групах'];
-    private const SURNAME_PATTERNS = ['енко', 'ський', 'цький', 'ич', 'юк', 'як', 'ук', 'ів', 'ець', 'ха', 'ій'];
+    private const SURNAME_PATTERNS = ['енко', 'ський', 'цький', 'ич', 'юк', 'як', 'ук', 'ів', 'ець', 'ха', 'ка', 'ін', 'ій'];
     private const VOWELS = ['а', 'е', 'и', 'і', 'о', 'у', 'я', 'є', 'ї', 'ю'];
     private const SHORT_NOUNS_WITH_U = [
         'сніг', 'сад', 'гай', 'дім', 'ліс', 'край', 'рік', 'час',
@@ -154,7 +154,37 @@ class Declensioner implements DeclensionerContract
             return WordHelper::copyLetterCase($word, $result);
         }
         
-        // 3. Systematic rule: surnames ending in -ій follow specific pattern
+        // 3. Systematic rule: surnames ending in -ка undergo к → ц mutation in dative/locative
+        if (WordHelper::endsWith($lowerWord, 'ка')) {
+            $stem = mb_substr($lowerWord, 0, -2); // Remove -ка
+            $result = match($case) {
+                GrammaticalCase::GENITIVE => $stem . 'ки',
+                GrammaticalCase::DATIVE => $stem . 'ці',  // к → ц mutation
+                GrammaticalCase::ACCUSATIVE => $stem . 'ку',
+                GrammaticalCase::INSTRUMENTAL => $stem . 'кою',
+                GrammaticalCase::LOCATIVE => $stem . 'ці',  // к → ц mutation
+                GrammaticalCase::VOCATIVE => $stem . 'ко',
+                default => $word, // NOMINATIVE
+            };
+            return WordHelper::copyLetterCase($word, $result);
+        }
+        
+        // 4. Systematic rule: surnames ending in -ін follow soft declension pattern
+        if (WordHelper::endsWith($lowerWord, 'ін')) {
+            $stem = mb_substr($lowerWord, 0, -1); // Remove -н, keep the -і
+            $result = match($case) {
+                GrammaticalCase::GENITIVE => $stem . 'на',
+                GrammaticalCase::DATIVE => $stem . 'ну',
+                GrammaticalCase::ACCUSATIVE => $stem . 'на',
+                GrammaticalCase::INSTRUMENTAL => $stem . 'ним',
+                GrammaticalCase::LOCATIVE => $stem . 'ні',
+                GrammaticalCase::VOCATIVE => $stem . 'не',
+                default => $word, // NOMINATIVE
+            };
+            return WordHelper::copyLetterCase($word, $result);
+        }
+        
+        // 5. Systematic rule: surnames ending in -ій follow specific pattern
         if (WordHelper::endsWith($lowerWord, 'ій')) {
             $stem = mb_substr($lowerWord, 0, -1); // Remove only -й, keep the -і
             $result = match($case) {
@@ -169,7 +199,7 @@ class Declensioner implements DeclensionerContract
             return WordHelper::copyLetterCase($word, $result);
         }
         
-        // 4. All other Ukrainian surnames follow regular declension patterns
+        // 6. All other Ukrainian surnames follow regular declension patterns
         return $this->declineRegularWord($word, $case, $gender, Number::SINGULAR);
     }
 

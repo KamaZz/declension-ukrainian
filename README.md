@@ -94,5 +94,3 @@ $declinedName = UkrainianDeclension::decline('Петренко Олексій І
 ```
 
 However, you can still provide the gender for ambiguous words or to ensure accuracy.
-
-```
