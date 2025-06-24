@@ -26,7 +26,7 @@ class Declensioner implements DeclensionerContract
     
     // Static arrays for better performance
     private const COMMON_WORDS_EXCLUSIONS = ['любов', 'основ', 'морков', 'здоров', 'групи', 'групе', 'групу', 'групою', 'групах'];
-    private const SURNAME_PATTERNS = ['енко', 'ський', 'цький', 'ич', 'юк', 'як', 'ук', 'ів', 'ець'];
+    private const SURNAME_PATTERNS = ['енко', 'ський', 'цький', 'ич', 'юк', 'як', 'ук', 'ів', 'ець', 'ха', 'ій'];
     private const VOWELS = ['а', 'е', 'и', 'і', 'о', 'у', 'я', 'є', 'ї', 'ю'];
     private const SHORT_NOUNS_WITH_U = [
         'сніг', 'сад', 'гай', 'дім', 'ліс', 'край', 'рік', 'час',
@@ -127,70 +127,49 @@ class Declensioner implements DeclensionerContract
 
     protected function declineUkrainianSurname(string $word, string $lowerWord, GrammaticalCase $case, Gender $gender): string
     {
-        // Special handling for surnames ending in -енко
+        // According to Ukrainian grammar sources, most surnames follow regular declension patterns
+        // with a few systematic rules for specific endings
+        
+        // 1. Surnames ending in -енко are indeclinable for women, decline normally for men
         if (WordHelper::endsWith($lowerWord, 'енко')) {
-            // According to Ukrainian grammar, -енко surnames are indeclinable for women
-            // and decline normally for men
             if ($gender === Gender::FEMININE) {
                 return $word; // Indeclinable for women
-            } else {
-                // Decline normally for men
-                $stem = mb_substr($lowerWord, 0, -4); // Remove -енко from lowercase
-                $result = match($case) {
-                    GrammaticalCase::GENITIVE => $stem . 'енка',
-                    GrammaticalCase::DATIVE => $stem . 'енку', 
-                    GrammaticalCase::ACCUSATIVE => $stem . 'енка',
-                    GrammaticalCase::INSTRUMENTAL => $stem . 'енком',
-                    GrammaticalCase::LOCATIVE => $stem . 'енкові',
-                    GrammaticalCase::VOCATIVE => $stem . 'енку',
-                    default => $word, // NOMINATIVE
-                };
-                return WordHelper::copyLetterCase($word, $result);
             }
+            // For men, use regular second declension
+            return $this->declineRegularWord($word, $case, Gender::MASCULINE, Number::SINGULAR);
         }
         
-        // Special handling for surnames ending in -ець
-        if (WordHelper::endsWith($lowerWord, 'ець')) {
-            // Distinguish between occupation-based words and regular surnames
-            $occupationWordsInEts = ['кравець', 'стрілець', 'борець', 'творець', 'співець'];
-            
-            if (in_array($lowerWord, $occupationWordsInEts)) {
-                // Occupation-based words ending in -ець get special -цю ending in locative
-                $stem = mb_substr($lowerWord, 0, -3); // Remove -ець from lowercase
-                $result = match($case) {
-                    GrammaticalCase::GENITIVE => $stem . 'ця',
-                    GrammaticalCase::DATIVE => $stem . 'цю',
-                    GrammaticalCase::ACCUSATIVE => $stem . 'ця',
-                    GrammaticalCase::INSTRUMENTAL => $stem . 'цем',
-                    GrammaticalCase::LOCATIVE => $stem . 'цю',  // Special: occupation words get -цю
-                    GrammaticalCase::VOCATIVE => $stem . 'цю',
-                    default => $word, // NOMINATIVE
-                };
-                return WordHelper::copyLetterCase($word, $result);
-            } else {
-                // Regular surnames ending in -ець get -цеві in locative (like Горобець)
-                $stem = mb_substr($lowerWord, 0, -3); // Remove -ець from lowercase
-                $result = match($case) {
-                    GrammaticalCase::GENITIVE => $stem . 'ця',
-                    GrammaticalCase::DATIVE => $stem . 'цю',
-                    GrammaticalCase::ACCUSATIVE => $stem . 'ця',
-                    GrammaticalCase::INSTRUMENTAL => $stem . 'цем',
-                    GrammaticalCase::LOCATIVE => $stem . 'цеві',  // Regular surnames get -цеві
-                    GrammaticalCase::VOCATIVE => $stem . 'цю',
-                    default => $word, // NOMINATIVE
-                };
-                return WordHelper::copyLetterCase($word, $result);
-            }
+        // 2. Systematic rule: surnames ending in -ха undergo х → с mutation in dative/locative
+        if (WordHelper::endsWith($lowerWord, 'ха')) {
+            $stem = mb_substr($lowerWord, 0, -2); // Remove -ха
+            $result = match($case) {
+                GrammaticalCase::GENITIVE => $stem . 'хи',
+                GrammaticalCase::DATIVE => $stem . 'сі',  // х → с mutation
+                GrammaticalCase::ACCUSATIVE => $stem . 'ху',
+                GrammaticalCase::INSTRUMENTAL => $stem . 'хою',
+                GrammaticalCase::LOCATIVE => $stem . 'сі',  // х → с mutation
+                GrammaticalCase::VOCATIVE => $stem . 'хо',
+                default => $word, // NOMINATIVE
+            };
+            return WordHelper::copyLetterCase($word, $result);
         }
         
-        // For surnames ending in -ов/-ев (like СУЧКОВ), use regular second declension
-        if (preg_match('/[аеиіоуяєї][чквгхт]ов$/ui', $lowerWord) || preg_match('/[аеиіоуяєї][чквгхт]ев$/ui', $lowerWord)) {
-            // Use regular declension for -ов/-ев surnames
-            $declined = $this->declineRegularWord($word, $case, Gender::MASCULINE, Number::SINGULAR);
-            return WordHelper::copyLetterCase($word, $declined);
+        // 3. Systematic rule: surnames ending in -ій follow specific pattern
+        if (WordHelper::endsWith($lowerWord, 'ій')) {
+            $stem = mb_substr($lowerWord, 0, -1); // Remove only -й, keep the -і
+            $result = match($case) {
+                GrammaticalCase::GENITIVE => $stem . 'я',
+                GrammaticalCase::DATIVE => $stem . 'ю',
+                GrammaticalCase::ACCUSATIVE => $stem . 'я',
+                GrammaticalCase::INSTRUMENTAL => $stem . 'єм',
+                GrammaticalCase::LOCATIVE => $stem . 'єві',
+                GrammaticalCase::VOCATIVE => $stem . 'ю',
+                default => $word, // NOMINATIVE
+            };
+            return WordHelper::copyLetterCase($word, $result);
         }
         
-        // Fall back to regular declension for other surname patterns
+        // 4. All other Ukrainian surnames follow regular declension patterns
         return $this->declineRegularWord($word, $case, $gender, Number::SINGULAR);
     }
 
